@@ -8,6 +8,7 @@ from aiogram import Bot
 
 from git_chameleon.i18n import Strings
 from git_chameleon.services.github_app import GitHubApp
+from git_chameleon.services.llm import LLMClient, pr_summary
 from git_chameleon.storage import Storage, UserLink
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ async def digest_text(
     link: UserLink,
     strings: Strings | None = None,
     selected_ids: set[int] | None = None,
+    llm: LLMClient | None = None,
 ) -> str | None:
     """Return a text digest of open pull requests, or None if nothing to report."""
     if not link.installation_id:
@@ -39,7 +41,8 @@ async def digest_text(
     repos = [repo for repo in await github_app.list_repositories(token)
              if repo["id"] in selected_ids]
 
-    lines: list[str] = []
+    review_on = llm is not None and link.llm_review
+    blocks: list[str] = []
     for repo in repos:
         owner = repo["owner"]["login"]
         name = repo["name"]
@@ -48,40 +51,47 @@ async def digest_text(
         except Exception:
             logger.exception("Failed to fetch pull requests for %s/%s", owner, name)
             continue
-        lines.extend(
-            _fmt_pr(
-                owner,
-                name,
-                pr.number,
-                pr.title,
-                pr.is_draft,
-                strings.get("digest.draft"),
+        for pr in pulls:
+            line = _fmt_pr(
+                owner, name, pr.number, pr.title, pr.is_draft, strings.get("digest.draft")
             )
-            for pr in pulls
-        )
+            if review_on and llm is not None:
+                summary = await pr_summary(
+                    llm, owner, name, pr.number, pr.title, pr.body, strings.locale
+                )
+                if summary:
+                    line += "\n<i>" + html.escape(summary) + "</i>"
+            blocks.append(line)
 
-    if not lines:
+    if not blocks:
         return None
     mention = (
         f'<a href="tg://user?id={link.user_id}">@{link.github_login or "user"}</a>'
     )
-    return "\n\n".join(
-        (
-            strings.get("digest.title"),
-            strings.get("digest.mention", mention=mention),
-            "\n".join(lines),
-            strings.get("digest.no_llm"),
-        )
+    footer = None if review_on else strings.get("digest.no_llm")
+    parts = (
+        strings.get("digest.title"),
+        strings.get("digest.mention", mention=mention),
+        "\n".join(blocks),
+        footer,
     )
+    return "\n\n".join(part for part in parts if part)
 
 
 class Scheduler:
     """Periodic tasks: refresh installations and report open PRs."""
 
-    def __init__(self, bot: Bot, storage: Storage, github_app: GitHubApp) -> None:
+    def __init__(
+        self,
+        bot: Bot,
+        storage: Storage,
+        github_app: GitHubApp,
+        llm: LLMClient | None = None,
+    ) -> None:
         self._bot = bot
         self._storage = storage
         self._github_app = github_app
+        self._llm = llm
         self._last_digest: dict[int, str | None] = {}
 
     async def sync_installations(self) -> None:
@@ -110,7 +120,9 @@ class Scheduler:
     async def check_prs(self) -> None:
         for link in self._storage.all_links():
             selected = self._storage.selected_repo_ids(link.user_id)
-            digest = await digest_text(self._github_app, link, Strings(link.locale), selected)
+            digest = await digest_text(
+                self._github_app, link, Strings(link.locale), selected, self._llm
+            )
             if digest == self._last_digest.get(link.user_id):
                 continue
             self._last_digest[link.user_id] = digest

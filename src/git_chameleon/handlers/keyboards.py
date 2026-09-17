@@ -112,6 +112,32 @@ def repos_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
+def llm_menu(strings: Strings, link: UserLink | None, provider_configured: bool) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=("✅ " if link and link.llm_chat else "") + strings.get("btn.llm_chat"),
+        callback_data=MenuCB(action="llm_chat"),
+    )
+    builder.button(
+        text=("✅ " if link and link.llm_review else "") + strings.get("btn.llm_review"),
+        callback_data=MenuCB(action="llm_review"),
+    )
+    builder.button(
+        text=strings.get("btn.back_settings"), callback_data=MenuCB(action="settings")
+    )
+    builder.button(text=strings.get("btn.back"), callback_data=MenuCB(action="menu"))
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def llm_screen_text(
+    strings: Strings, provider_configured: bool, model: str = ""
+) -> str:
+    if provider_configured:
+        return strings.get("llm.text_configured", model=model)
+    return strings.get("llm.text_unconfigured")
+
+
 def menu_text(strings: Strings, link: UserLink | None) -> str:
     title = strings.get("menu.title")
     if link is None or not link.github_login:

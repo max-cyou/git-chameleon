@@ -162,3 +162,57 @@ def test_clear_link_removes_repo_selection(tmp_path) -> None:
     storage.clear_link(1)
     assert storage.selected_repo_ids(1) == set()
     storage.close()
+
+
+def test_llm_flag_toggles(tmp_path) -> None:
+    storage = Storage(str(tmp_path / "test.db"))
+    storage.ensure_user(1, 100)
+
+    link = storage.get_link(1)
+    assert link is not None
+    assert link.llm_chat is False
+    assert link.llm_review is False
+
+    assert storage.toggle_llm_chat(1) is True
+    assert storage.toggle_llm_review(1) is True
+    link = storage.get_link(1)
+    assert link is not None
+    assert link.llm_chat is True
+    assert link.llm_review is True
+
+    assert storage.toggle_llm_chat(1) is False
+    link = storage.get_link(1)
+    assert link is not None
+    assert link.llm_chat is False
+    assert link.llm_review is True
+    storage.close()
+
+
+def test_storage_migration_adds_llm_columns(tmp_path) -> None:
+    import sqlite3
+
+    db_path = tmp_path / "legacy.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        """
+        CREATE TABLE user_links (
+            user_id INTEGER PRIMARY KEY,
+            chat_id INTEGER NOT NULL,
+            github_login TEXT UNIQUE,
+            installation_id INTEGER
+        )
+        """
+    )
+    conn.execute(
+        "INSERT INTO user_links (user_id, chat_id, github_login, installation_id)"
+        " VALUES (1, 100, 'octocat', 7)"
+    )
+    conn.commit()
+    conn.close()
+
+    storage = Storage(str(db_path))
+    link = storage.get_link(1)
+    assert link is not None
+    assert link.llm_chat is False
+    assert link.llm_review is False
+    storage.close()

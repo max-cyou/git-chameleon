@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import html
+import logging
 import re
 
 from aiogram import F, Router, types
@@ -9,9 +11,12 @@ from git_chameleon.handlers.keyboards import main_menu, menu_text, status_text
 from git_chameleon.i18n import Strings
 from git_chameleon.scheduler import digest_text
 from git_chameleon.services.github_app import GitHubApp, Installation
+from git_chameleon.services.llm import LLMClient, chat_system_prompt
 from git_chameleon.storage import Storage
 
 router = Router()
+
+logger = logging.getLogger(__name__)
 
 GITHUB_LOGIN_RE = re.compile(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37})$")
 
@@ -61,7 +66,11 @@ async def link_user(
 
 
 async def sync_user(
-    github_app: GitHubApp, storage: Storage, user_id: int, strings: Strings
+    github_app: GitHubApp,
+    storage: Storage,
+    user_id: int,
+    strings: Strings,
+    llm: LLMClient | None = None,
 ) -> str:
     link = storage.get_link(user_id)
     if link is None or not link.github_login:
@@ -77,7 +86,9 @@ async def sync_user(
         return strings.get("sync.no_repos", installation_id=installation.id)
 
     link = storage.get_link(user_id)
-    digest = await digest_text(github_app, link, strings, selected) if link else None
+    digest = (
+        await digest_text(github_app, link, strings, selected, llm) if link else None
+    )
     if digest:
         return strings.get(
             "sync.linked_digest", installation_id=installation.id, digest=digest
@@ -112,11 +123,15 @@ async def on_link(
 
 @router.message(Command("sync"))
 async def on_sync(
-    message: types.Message, storage: Storage, github_app: GitHubApp, strings: Strings
+    message: types.Message,
+    storage: Storage,
+    github_app: GitHubApp,
+    strings: Strings,
+    llm: LLMClient | None,
 ) -> None:
     user_id = _user_id(message)
     storage.ensure_user(user_id, message.chat.id)
-    text = await sync_user(github_app, storage, user_id, strings)
+    text = await sync_user(github_app, storage, user_id, strings, llm)
     await message.answer(text, reply_markup=main_menu(strings))
 
 
@@ -147,8 +162,29 @@ async def on_menu(message: types.Message, storage: Storage, strings: Strings) ->
 
 
 @router.message(F.text)
-async def on_plain_text(message: types.Message, storage: Storage, strings: Strings) -> None:
-    """Free-form text: the LLM is not configured yet, so explain that."""
+async def on_plain_text(
+    message: types.Message,
+    storage: Storage,
+    strings: Strings,
+    llm: LLMClient | None,
+) -> None:
+    """Free-form text: answer via LLM chat if enabled, otherwise explain."""
     user_id = _user_id(message)
-    storage.ensure_user(user_id, message.chat.id)
-    await message.answer(strings.get("llm.not_configured"), reply_markup=main_menu(strings))
+    link = storage.ensure_user(user_id, message.chat.id)
+
+    if llm is None:
+        await message.answer(strings.get("llm.not_configured"), reply_markup=main_menu(strings))
+        return
+    if not link.llm_chat:
+        await message.answer(strings.get("llm.chat_disabled"), reply_markup=main_menu(strings))
+        return
+
+    try:
+        answer = await llm.complete(
+            chat_system_prompt(strings.locale), message.text or ""
+        )
+    except Exception:
+        logger.exception("LLM chat failed for user %s", user_id)
+        await message.answer(strings.get("llm.chat_error"))
+        return
+    await message.answer(html.escape(answer))

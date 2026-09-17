@@ -12,9 +12,11 @@ class UserLink:
     github_login: str | None = None
     installation_id: int | None = None
     locale: str | None = None
+    llm_chat: bool = False
+    llm_review: bool = False
 
 
-_COLUMNS = "user_id, chat_id, github_login, installation_id, locale"
+_COLUMNS = "user_id, chat_id, github_login, installation_id, locale, llm_chat, llm_review"
 
 
 class Storage:
@@ -38,6 +40,9 @@ class Storage:
         columns = {row[1] for row in self._conn.execute("PRAGMA table_info(user_links)")}
         if "locale" not in columns:
             self._conn.execute("ALTER TABLE user_links ADD COLUMN locale TEXT")
+        for column in ("llm_chat", "llm_review"):
+            if column not in columns:
+                self._conn.execute(f"ALTER TABLE user_links ADD COLUMN {column} INTEGER DEFAULT 0")
         self._conn.execute(
             """
             CREATE TABLE IF NOT EXISTS repo_selections (
@@ -50,13 +55,15 @@ class Storage:
         self._conn.commit()
 
     def _row_to_link(self, row: tuple) -> UserLink:
-        user_id, chat_id, github_login, installation_id, locale = row
+        user_id, chat_id, github_login, installation_id, locale, llm_chat, llm_review = row
         return UserLink(
             user_id=user_id,
             chat_id=chat_id,
             github_login=github_login,
             installation_id=installation_id,
             locale=locale,
+            llm_chat=bool(llm_chat),
+            llm_review=bool(llm_review),
         )
 
     def ensure_user(self, user_id: int, chat_id: int) -> UserLink:
@@ -92,6 +99,23 @@ class Storage:
             (installation_id, user_id),
         )
         self._conn.commit()
+
+    def _toggle_flag(self, user_id: int, column: str) -> bool:
+        """Flip a boolean user flag. Returns the new value."""
+        assert column in ("llm_chat", "llm_review")
+        self._conn.execute(
+            f"UPDATE user_links SET {column} = 1 - {column} WHERE user_id = ?",
+            (user_id,),
+        )
+        self._conn.commit()
+        link = self.get_link(user_id)
+        return bool(getattr(link, column)) if link else False
+
+    def toggle_llm_chat(self, user_id: int) -> bool:
+        return self._toggle_flag(user_id, "llm_chat")
+
+    def toggle_llm_review(self, user_id: int) -> bool:
+        return self._toggle_flag(user_id, "llm_review")
 
     def get_link(self, user_id: int) -> UserLink | None:
         row = self._conn.execute(

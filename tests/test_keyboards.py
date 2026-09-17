@@ -5,6 +5,8 @@ from git_chameleon.handlers.keyboards import (
     back_to_menu,
     back_to_settings,
     confirm_unlink,
+    llm_menu,
+    llm_screen_text,
     main_menu,
     menu_text,
     repos_keyboard,
@@ -104,6 +106,35 @@ def test_repos_keyboard_clamps_nav_on_last_page() -> None:
 
 def test_repos_per_page_is_five() -> None:
     assert REPOS_PER_PAGE == 5
+
+
+def test_llm_menu_toggles() -> None:
+    off = UserLink(user_id=1, chat_id=1)
+    markup = llm_menu(Strings("en"), off, provider_configured=False)
+    assert all_texts(markup) == ["Chat", "Review", "Back to settings", "Back to menu"]
+    assert all_callback_data(markup) == [
+        "menu:llm_chat",
+        "menu:llm_review",
+        "menu:settings",
+        "menu:menu",
+    ]
+
+    on = UserLink(user_id=1, chat_id=1, llm_chat=True, llm_review=True)
+    assert all_texts(llm_menu(Strings("ru"), on, provider_configured=True)) == [
+        "✅ Чат",
+        "✅ Ревью",
+        "К настройкам",
+        "В меню",
+    ]
+
+
+def test_llm_screen_text_states() -> None:
+    configured = llm_screen_text(Strings("en"), True, "gpt-4o-mini")
+    assert configured.startswith("<b>")
+    assert "gpt-4o-mini" in configured
+
+    unconfigured = llm_screen_text(Strings("ru"), False)
+    assert "не настроен" in unconfigured
 
 
 def test_texts_without_link() -> None:

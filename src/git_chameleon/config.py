@@ -15,6 +15,9 @@ class Settings:
         default_factory=lambda: os.getenv("GITHUB_APP_PRIVATE_KEY_PATH", "")
     )
     database_path: str = field(default_factory=lambda: os.getenv("DATABASE_PATH", "data/bot.db"))
+    llm_base_url: str = field(default_factory=lambda: os.getenv("LLM_BASE_URL", ""))
+    llm_api_key: str = field(default_factory=lambda: os.getenv("LLM_API_KEY", ""))
+    llm_model: str = field(default_factory=lambda: os.getenv("LLM_MODEL", ""))
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
 
 

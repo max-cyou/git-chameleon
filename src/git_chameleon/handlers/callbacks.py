@@ -12,6 +12,8 @@ from git_chameleon.handlers.keyboards import (
     back_to_menu,
     back_to_settings,
     confirm_unlink,
+    llm_menu,
+    llm_screen_text,
     main_menu,
     menu_text,
     repos_keyboard,
@@ -19,6 +21,7 @@ from git_chameleon.handlers.keyboards import (
 )
 from git_chameleon.i18n import Strings
 from git_chameleon.services.github_app import GitHubApp
+from git_chameleon.services.llm import LLMClient
 from git_chameleon.storage import Storage
 
 router = Router()
@@ -84,7 +87,11 @@ async def cb_menu(cb: types.CallbackQuery, storage: Storage, strings: Strings) -
 
 @router.callback_query(MenuCB.filter(F.action == "link"))
 async def cb_link(
-    cb: types.CallbackQuery, storage: Storage, github_app: GitHubApp, strings: Strings
+    cb: types.CallbackQuery,
+    storage: Storage,
+    github_app: GitHubApp,
+    strings: Strings,
+    llm: LLMClient | None,
 ) -> None:
     await cb.answer()
     user_id = cb.from_user.id
@@ -95,7 +102,7 @@ async def cb_link(
     if link is None or not link.github_login:
         text = await install_text(github_app, strings)
     else:
-        text = await sync_user(github_app, storage, user_id, strings)
+        text = await sync_user(github_app, storage, user_id, strings, llm)
     await _show(cb, text, back_to_menu(strings))
 
 
@@ -106,9 +113,49 @@ async def cb_settings(cb: types.CallbackQuery, strings: Strings) -> None:
 
 
 @router.callback_query(MenuCB.filter(F.action == "llm"))
-async def cb_llm(cb: types.CallbackQuery, strings: Strings) -> None:
+async def cb_llm(
+    cb: types.CallbackQuery,
+    storage: Storage,
+    llm: LLMClient | None,
+    strings: Strings,
+) -> None:
     await cb.answer()
-    await _show(cb, strings.get("llm.empty"), back_to_settings(strings))
+    link = storage.get_link(cb.from_user.id)
+    await _show(
+        cb,
+        llm_screen_text(strings, llm is not None, llm.model if llm else ""),
+        llm_menu(strings, link, llm is not None),
+    )
+
+
+@router.callback_query(MenuCB.filter(F.action == "llm_chat"))
+async def cb_llm_chat(
+    cb: types.CallbackQuery, storage: Storage, llm: LLMClient | None, strings: Strings
+) -> None:
+    await cb.answer()
+    storage.ensure_user(cb.from_user.id, cb.message.chat.id if cb.message else cb.from_user.id)
+    storage.toggle_llm_chat(cb.from_user.id)
+    link = storage.get_link(cb.from_user.id)
+    await _show(
+        cb,
+        llm_screen_text(strings, llm is not None, llm.model if llm else ""),
+        llm_menu(strings, link, llm is not None),
+    )
+
+
+@router.callback_query(MenuCB.filter(F.action == "llm_review"))
+async def cb_llm_review(
+    cb: types.CallbackQuery, storage: Storage, llm: LLMClient | None, strings: Strings
+) -> None:
+    await cb.answer()
+    storage.ensure_user(cb.from_user.id, cb.message.chat.id if cb.message else cb.from_user.id)
+    storage.toggle_llm_review(cb.from_user.id)
+    link = storage.get_link(cb.from_user.id)
+    await _show(
+        cb,
+        llm_screen_text(strings, llm is not None, llm.model if llm else ""),
+        llm_menu(strings, link, llm is not None),
+    )
 
 
 @router.callback_query(MenuCB.filter(F.action == "repos"))

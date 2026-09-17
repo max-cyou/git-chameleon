@@ -38,6 +38,7 @@ class PullRequest:
     html_url: str
     state: str
     is_draft: bool
+    body: str = ""
 
     @classmethod
     def from_dict(cls, data: dict) -> PullRequest:
@@ -47,6 +48,7 @@ class PullRequest:
             html_url=data["html_url"],
             state=data["state"],
             is_draft=bool(data.get("draft", False)),
+            body=data.get("body") or "",
         )
 
 

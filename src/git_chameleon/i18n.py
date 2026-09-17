@@ -56,6 +56,21 @@ STRINGS: dict[str, dict[str, str]] = {
             "<b>Settings</b>\n\n"
             "Pick the repositories to receive news about, or unlink your account."
         ),
+        "llm.text_configured": (
+            "<b>LLM</b>\n\nProvider: {model}\nEnable the features you need:"
+        ),
+        "llm.text_unconfigured": (
+            "<b>LLM</b>\n\nThe provider is not configured on the server "
+            "(.env: LLM_BASE_URL, LLM_API_KEY, LLM_MODEL).\n"
+            "You can flip the toggles now \u2014 they will work once the "
+            "provider is set up."
+        ),
+        "btn.llm_chat": "Chat",
+        "btn.llm_review": "Review",
+        "llm.chat_disabled": (
+            "Chat is disabled. Enable it in Settings \u2192 LLM."
+        ),
+        "llm.chat_error": "Failed to get an answer from the neural network.",
         "llm.empty": (
             "The LLM section is empty for now.\n"
             "Neural network setup will appear here later."
@@ -105,7 +120,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "unlink.done": "Unlinked.",
         "unlink.confirm": "Unlink GitHub account @{login}?",
         "unlink.nothing": "Nothing to unlink.",
-        "digest.title": "<b>Open PRs:</b>",
+        "digest.title": "<b>Open PRs!</b>",
         "digest.mention": "{mention}, you have open PRs:",
         "digest.no_llm": "LLM is not configured \u2014 no summaries will be generated.",
         "digest.draft": "[draft]",
@@ -155,6 +170,21 @@ STRINGS: dict[str, dict[str, str]] = {
             "<b>Настройки</b>\n\n"
             "Выбери репозитории, по которым присылать новости, или отвяжи аккаунт."
         ),
+        "llm.text_configured": (
+            "<b>LLM</b>\n\nПровайдер: {model}\nВключи нужные функции:"
+        ),
+        "llm.text_unconfigured": (
+            "<b>LLM</b>\n\nПровайдер не настроен на сервере "
+            "(.env: LLM_BASE_URL, LLM_API_KEY, LLM_MODEL).\n"
+            "Переключатели можно включить заранее — заработают после "
+            "настройки провайдера."
+        ),
+        "btn.llm_chat": "Чат",
+        "btn.llm_review": "Ревью",
+        "llm.chat_disabled": (
+            "Чат выключен. Включи его в Настройки \u2192 LLM."
+        ),
+        "llm.chat_error": "Не удалось получить ответ от нейросети.",
         "llm.empty": (
             "Раздел LLM пока пуст.\n"
             "Настройка нейросети появится здесь позже."
@@ -204,7 +234,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "unlink.done": "Отвязано.",
         "unlink.confirm": "Отвязать аккаунт GitHub @{login}?",
         "unlink.nothing": "Нечего отвязывать.",
-        "digest.title": "<b>Открытые PR:</b>",
+        "digest.title": "<b>Открытые PR!</b>",
         "digest.mention": "{mention}, у тебя есть открытые PR:",
         "digest.no_llm": "LLM не настроен — саммари не будет.",
         "digest.draft": "[черновик]",
