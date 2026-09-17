@@ -7,7 +7,7 @@ import time
 
 import httpx
 
-from git_chameleon.services.github_app import GitHubApp
+from git_chameleon.services.github_app import GitHubApp, PRFile
 from git_chameleon.storage import Storage, UserLink
 
 logger = logging.getLogger(__name__)
@@ -37,17 +37,25 @@ CHAT_SYSTEM_PROMPTS = {
 
 SUMMARY_SYSTEM_PROMPTS = {
     "en": (
-        "You write detailed pull request reviews for a Telegram digest. "
-        "In 4-6 sentences (or a compact bullet list, one item per line "
-        "prefixed with '- ') describe: what the PR changes, why it matters, "
-        "and what to pay attention to when reviewing. "
-        "Plain text only: no Markdown, no HTML. Answer in English."
+        "You write pull request reviews for a Telegram digest. "
+        "Describe in 4-6 sentences (or a compact bullet list) what the PR "
+        "changes and why it matters. "
+        "STRICT RULES: rely only on the provided title, description, file "
+        "names and patches. Never invent functionality, motivation or "
+        "details that are not literally present. If the PR is trivial, "
+        "empty or a joke, say exactly that in one short sentence instead "
+        "of speculating. Plain text only: no Markdown, no HTML. "
+        "Answer in English."
     ),
     "ru": (
-        "Ты пишешь подробные ревью pull request'ов для дайджеста в Telegram. "
-        "В 4-6 предложениях (или компактным списком, по пункту на строку "
-        "с '- ') опиши: что меняет PR, зачем это нужно и на что обратить "
-        "внимание при ревью. Только простой текст: без Markdown и HTML. "
+        "Ты пишешь ревью pull request'ов для дайджеста в Telegram. "
+        "В 4-6 предложениях (или компактным списком) опиши, что меняет PR "
+        "и зачем это нужно. "
+        "СТРОГО: опирайся только на предоставленные заголовок, описание, "
+        "имена файлов и патчи. Не выдумывай функциональность, мотивацию и "
+        "детали, которых буквально нет. Если PR тривиальный, пустой или "
+        "шуточный — напиши прямо это одной короткой фразой вместо "
+        "домыслов. Только простой текст: без Markdown и HTML. "
         "Ответь по-русски."
     ),
 }
@@ -119,6 +127,23 @@ def summary_system_prompt(locale: str) -> str:
     return SUMMARY_SYSTEM_PROMPTS.get(locale, SUMMARY_SYSTEM_PROMPTS["en"])
 
 
+def format_pr_files(files: list[PRFile], *, per_file: int = 1200, total: int = 6000) -> str:
+    """Render changed files with truncated patches for the summary prompt."""
+    lines: list[str] = []
+    used = 0
+    for f in files:
+        patch = f.patch[:per_file]
+        block = f"- {f.filename} (+{f.additions}/-{f.deletions})"
+        if patch:
+            block += "\n  " + patch.replace("\n", "\n  ")
+        if used + len(block) > total:
+            lines.append("- ... (remaining files omitted)")
+            break
+        lines.append(block)
+        used += len(block)
+    return "\n".join(lines)
+
+
 async def pr_summary(
     llm: LLMClient,
     owner: str,
@@ -127,6 +152,7 @@ async def pr_summary(
     title: str,
     body: str,
     locale: str,
+    files: list[PRFile] | None = None,
 ) -> str | None:
     """Return a cached-or-fresh summary of a pull request, or None on failure."""
     key = (owner, repo, number)
@@ -135,6 +161,8 @@ async def pr_summary(
         return cached
 
     user_message = f"{owner}/{repo} #{number}: {title}\n\n{body[:4000]}"
+    if files:
+        user_message += "\n\nChanged files:\n" + format_pr_files(files)
     try:
         summary = await llm.complete(
             summary_system_prompt(locale),
@@ -206,8 +234,16 @@ async def _collect_pr_context(
         for pr in pulls:
             entry = f"{owner}/{name}#{pr.number}: {pr.title}"
             if review_on and llm is not None:
+                try:
+                    files = await github_app.list_pr_files(token, owner, name, pr.number)
+                except Exception:
+                    logger.exception(
+                        "Failed to fetch files for %s/%s#%s", owner, name, pr.number
+                    )
+                    files = None
                 summary = await pr_summary(
-                    llm, owner, name, pr.number, pr.title, pr.body, link.locale or "en"
+                    llm, owner, name, pr.number, pr.title, pr.body,
+                    link.locale or "en", files,
                 )
                 if summary:
                     entry += "\n  Review: " + summary.replace("\n", " ")

@@ -52,6 +52,23 @@ class PullRequest:
         )
 
 
+@dataclass(frozen=True)
+class PRFile:
+    filename: str
+    additions: int
+    deletions: int
+    patch: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict) -> PRFile:
+        return cls(
+            filename=data["filename"],
+            additions=data.get("additions", 0),
+            deletions=data.get("deletions", 0),
+            patch=data.get("patch") or "",
+        )
+
+
 class GitHubApp:
     """GitHub App client: JWT auth, installations and installation tokens."""
 
@@ -107,6 +124,17 @@ class GitHubApp:
             "GET", f"/repos/{owner}/{repo}/pulls", token=token, params={"state": state}
         )
         return [PullRequest.from_dict(item) for item in response.json()]
+
+    async def list_pr_files(
+        self, token: str, owner: str, repo: str, number: int
+    ) -> list[PRFile]:
+        response = await self._request(
+            "GET",
+            f"/repos/{owner}/{repo}/pulls/{number}/files",
+            token=token,
+            params={"per_page": 100},
+        )
+        return [PRFile.from_dict(item) for item in response.json()]
 
     async def aclose(self) -> None:
         await self._client.aclose()

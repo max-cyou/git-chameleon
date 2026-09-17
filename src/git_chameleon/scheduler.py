@@ -58,8 +58,22 @@ async def digest_text(
                 owner, name, pr.number, pr.title, pr.is_draft, strings.get("digest.draft")
             )
             if review_on and llm is not None:
+                try:
+                    files = await github_app.list_pr_files(token, owner, name, pr.number)
+                except Exception:
+                    logger.exception(
+                        "Failed to fetch files for %s/%s#%s", owner, name, pr.number
+                    )
+                    files = None
                 summary = await pr_summary(
-                    llm, owner, name, pr.number, pr.title, pr.body, strings.locale
+                    llm,
+                    owner,
+                    name,
+                    pr.number,
+                    pr.title,
+                    pr.body,
+                    strings.locale,
+                    files,
                 )
                 if summary:
                     line += "\n<i>" + html.escape(summary) + "</i>"

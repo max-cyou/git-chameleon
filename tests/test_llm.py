@@ -59,6 +59,48 @@ async def test_pr_summary_cached_per_pr() -> None:
     assert route.call_count == 1
 
 
+def test_format_pr_files_truncates() -> None:
+    from git_chameleon.services.github_app import PRFile
+    from git_chameleon.services.llm import format_pr_files
+
+    files = [
+        PRFile(filename="a.py", additions=10, deletions=2, patch="+print('a')"),
+        PRFile(filename="b.py", additions=1, deletions=0, patch=""),
+    ]
+    rendered = format_pr_files(files)
+    assert "a.py (+10/-2)" in rendered
+    assert "+print('a')" in rendered
+    assert "b.py (+1/-0)" in rendered
+
+    big = [PRFile(filename=f"f{i}.py", additions=5, deletions=5, patch="x" * 3000)
+           for i in range(10)]
+    assert len(format_pr_files(big)) <= 6500
+    assert "remaining files omitted" in format_pr_files(big)
+
+
+@respx.mock
+async def test_pr_summary_includes_files() -> None:
+    from git_chameleon.services.github_app import PRFile
+
+    route = respx.post("https://llm.example.com/v1/chat/completions").mock(
+        return_value=_completion("Real summary.")
+    )
+
+    client = _client()
+    llm_module._summary_cache.clear()
+    files = [PRFile(filename="cats.txt", additions=3, deletions=0, patch="+ =^.^=")]
+    summary = await pr_summary(
+        client, "octocat", "repo", 42, "catssssss", "", "ru", files
+    )
+    await client.aclose()
+
+    assert summary == "Real summary."
+    body = route.calls.last.request.read().decode()
+    assert "cats.txt" in body
+    assert "=^.^=" in body
+    assert "не выдумывай" in body.lower() or "выдумывай" in body.lower()
+
+
 @respx.mock
 async def test_pr_summary_returns_none_on_failure() -> None:
     respx.post("https://llm.example.com/v1/chat/completions").mock(
