@@ -13,7 +13,7 @@ DEFAULT_LOCALE = "en"
 STRINGS: dict[str, dict[str, str]] = {
     "en": {
         "start.greeting": (
-            "Hello! I'm git-chameleon.\n\n"
+            "<b>Hello! I'm git-chameleon.</b>\n\n"
             "I watch your GitHub repositories and report open pull requests.\n"
             "Use the buttons below or /help to see the commands."
         ),
@@ -28,7 +28,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "/unlink - remove the binding\n"
             "/help - show this help"
         ),
-        "menu.title": "git-chameleon control panel",
+        "menu.title": "<b>git-chameleon control panel</b>",
         "menu.not_linked": (
             "Not linked. Press Linking or send /link <github-username>."
         ),
@@ -52,10 +52,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn.back": "Back to menu",
         "btn.back_settings": "Back to settings",
         "settings.text": (
-            "Settings\n\n"
+            "<b>Settings</b>\n\n"
             "Pick the repositories to receive news about, or unlink your account."
         ),
-        "repos.title": "Repositories",
+        "repos.title": "<b>Repositories</b>",
         "repos.count": "Total: {total}",
         "repos.selected": "Selected: {selected}",
         "repos.page_info": "Page {page} of {pages}",
@@ -96,12 +96,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "unlink.done": "Unlinked.",
         "unlink.confirm": "Unlink GitHub account @{login}?",
         "unlink.nothing": "Nothing to unlink.",
-        "digest.title": "Open PRs:",
+        "digest.title": "<b>Open PRs:</b>",
         "digest.draft": "[draft]",
     },
     "ru": {
         "start.greeting": (
-            "Привет! Я git-chameleon.\n\n"
+            "<b>Привет! Я git-chameleon.</b>\n\n"
             "Я слежу за репозиториями на GitHub и сообщаю об открытых pull request'ах.\n"
             "Пользуйся кнопками ниже или командой /help."
         ),
@@ -116,7 +116,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "/unlink - отвязать аккаунт\n"
             "/help - показать эту справку"
         ),
-        "menu.title": "Панель управления git-chameleon",
+        "menu.title": "<b>Панель управления git-chameleon</b>",
         "menu.not_linked": (
             "Аккаунт не привязан. Нажми «Привязка» или отправь /link <имя-пользователя>."
         ),
@@ -140,10 +140,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn.back": "В меню",
         "btn.back_settings": "К настройкам",
         "settings.text": (
-            "Настройки\n\n"
+            "<b>Настройки</b>\n\n"
             "Выбери репозитории, по которым присылать новости, или отвяжи аккаунт."
         ),
-        "repos.title": "Репозитории",
+        "repos.title": "<b>Репозитории</b>",
         "repos.count": "Всего: {total}",
         "repos.selected": "Выбрано: {selected}",
         "repos.page_info": "Страница {page} из {pages}",
@@ -184,7 +184,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "unlink.done": "Отвязано.",
         "unlink.confirm": "Отвязать аккаунт GitHub @{login}?",
         "unlink.nothing": "Нечего отвязывать.",
-        "digest.title": "Открытые PR:",
+        "digest.title": "<b>Открытые PR:</b>",
         "digest.draft": "[черновик]",
     },
 }

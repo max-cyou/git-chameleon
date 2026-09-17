@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 
 from aiogram import Bot
@@ -19,7 +20,7 @@ def _fmt_pr(
     owner: str, repo: str, number: int, title: str, is_draft: bool, draft_marker: str
 ) -> str:
     draft = f" {draft_marker}" if is_draft else ""
-    return f"#{number}{draft} {title} ({owner}/{repo})"
+    return f"#{number}{draft} {html.escape(title)} ({owner}/{repo})"
 
 
 async def digest_text(

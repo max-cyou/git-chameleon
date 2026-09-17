@@ -6,6 +6,8 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 
 from git_chameleon.config import load_settings
 from git_chameleon.handlers import main_router
@@ -25,7 +27,10 @@ async def main() -> None:
     if not settings.bot_token:
         raise RuntimeError("BOT_TOKEN is not set. Copy .env.example to .env and fill it in.")
 
-    bot = Bot(token=settings.bot_token)
+    bot = Bot(
+        token=settings.bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
     dispatcher = Dispatcher()
 
     storage = Storage(settings.database_path)

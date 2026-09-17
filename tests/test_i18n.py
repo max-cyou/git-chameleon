@@ -37,6 +37,23 @@ def test_locales_have_same_keys() -> None:
     assert set(STRINGS[DEFAULT_LOCALE]) == set(STRINGS["ru"])
 
 
+def test_titles_are_bold() -> None:
+    for locale in ("en", "ru"):
+        assert STRINGS[locale]["menu.title"].startswith("<b>")
+        assert STRINGS[locale]["repos.title"].startswith("<b>")
+        assert STRINGS[locale]["digest.title"].startswith("<b>")
+        assert STRINGS[locale]["settings.text"].startswith("<b>")
+        assert STRINGS[locale]["start.greeting"].startswith("<b>")
+
+
+def test_pr_title_is_escaped() -> None:
+    from git_chameleon.scheduler import _fmt_pr
+
+    line = _fmt_pr("octocat", "repo", 7, "fix a < b & c > d", False, "[draft]")
+    assert "&lt;" in line and "&gt;" in line and "&amp;" in line
+    assert "<b>" not in line
+
+
 def test_strings_from_none_locale_uses_default() -> None:
     assert Strings(None).locale == DEFAULT_LOCALE
     assert Strings("xx").locale == DEFAULT_LOCALE
