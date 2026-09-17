@@ -46,6 +46,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn.link": "Linking",
         "btn.settings": "Settings",
         "btn.repos": "Repositories",
+        "btn.llm": "LLM",
         "btn.unlink": "Unlink",
         "btn.unlink_confirm": "Yes, unlink",
         "btn.cancel": "Cancel",
@@ -54,6 +55,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.text": (
             "<b>Settings</b>\n\n"
             "Pick the repositories to receive news about, or unlink your account."
+        ),
+        "llm.empty": (
+            "The LLM section is empty for now.\n"
+            "Neural network setup will appear here later."
+        ),
+        "llm.not_configured": (
+            "The neural network is not configured yet, so I can't reply to "
+            "plain messages. See Settings \u2192 LLM."
         ),
         "repos.title": "<b>Repositories</b>",
         "repos.count": "Total: {total}",
@@ -97,6 +106,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "unlink.confirm": "Unlink GitHub account @{login}?",
         "unlink.nothing": "Nothing to unlink.",
         "digest.title": "<b>Open PRs:</b>",
+        "digest.mention": "{mention}, you have open PRs:",
+        "digest.no_llm": "LLM is not configured \u2014 no summaries will be generated.",
         "digest.draft": "[draft]",
     },
     "ru": {
@@ -134,6 +145,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn.link": "Привязка",
         "btn.settings": "Настройки",
         "btn.repos": "Репозитории",
+        "btn.llm": "LLM",
         "btn.unlink": "Отвязать",
         "btn.unlink_confirm": "Да, отвязать",
         "btn.cancel": "Отмена",
@@ -142,6 +154,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "settings.text": (
             "<b>Настройки</b>\n\n"
             "Выбери репозитории, по которым присылать новости, или отвяжи аккаунт."
+        ),
+        "llm.empty": (
+            "Раздел LLM пока пуст.\n"
+            "Настройка нейросети появится здесь позже."
+        ),
+        "llm.not_configured": (
+            "Нейросеть ещё не настроена, поэтому я не могу отвечать на обычные "
+            "сообщения. Настройки \u2192 LLM."
         ),
         "repos.title": "<b>Репозитории</b>",
         "repos.count": "Всего: {total}",
@@ -185,6 +205,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "unlink.confirm": "Отвязать аккаунт GitHub @{login}?",
         "unlink.nothing": "Нечего отвязывать.",
         "digest.title": "<b>Открытые PR:</b>",
+        "digest.mention": "{mention}, у тебя есть открытые PR:",
+        "digest.no_llm": "LLM не настроен — саммари не будет.",
         "digest.draft": "[черновик]",
     },
 }

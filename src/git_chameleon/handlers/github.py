@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from aiogram import Router, types
+from aiogram import F, Router, types
 from aiogram.filters import Command
 
 from git_chameleon.handlers.keyboards import main_menu, menu_text, status_text
@@ -144,3 +144,11 @@ async def on_menu(message: types.Message, storage: Storage, strings: Strings) ->
     storage.ensure_user(user_id, message.chat.id)
     link = storage.get_link(user_id)
     await message.answer(menu_text(strings, link), reply_markup=main_menu(strings))
+
+
+@router.message(F.text)
+async def on_plain_text(message: types.Message, storage: Storage, strings: Strings) -> None:
+    """Free-form text: the LLM is not configured yet, so explain that."""
+    user_id = _user_id(message)
+    storage.ensure_user(user_id, message.chat.id)
+    await message.answer(strings.get("llm.not_configured"), reply_markup=main_menu(strings))

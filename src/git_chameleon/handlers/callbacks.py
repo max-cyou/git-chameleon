@@ -105,6 +105,12 @@ async def cb_settings(cb: types.CallbackQuery, strings: Strings) -> None:
     await _show(cb, strings.get("settings.text"), settings_menu(strings))
 
 
+@router.callback_query(MenuCB.filter(F.action == "llm"))
+async def cb_llm(cb: types.CallbackQuery, strings: Strings) -> None:
+    await cb.answer()
+    await _show(cb, strings.get("llm.empty"), back_to_settings(strings))
+
+
 @router.callback_query(MenuCB.filter(F.action == "repos"))
 async def cb_repos(
     cb: types.CallbackQuery, storage: Storage, github_app: GitHubApp, strings: Strings

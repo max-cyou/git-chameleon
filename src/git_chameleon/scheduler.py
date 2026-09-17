@@ -62,7 +62,17 @@ async def digest_text(
 
     if not lines:
         return None
-    return strings.get("digest.title") + "\n\n" + "\n".join(lines)
+    mention = (
+        f'<a href="tg://user?id={link.user_id}">@{link.github_login or "user"}</a>'
+    )
+    return "\n\n".join(
+        (
+            strings.get("digest.title"),
+            strings.get("digest.mention", mention=mention),
+            "\n".join(lines),
+            strings.get("digest.no_llm"),
+        )
+    )
 
 
 class Scheduler:

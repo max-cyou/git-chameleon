@@ -35,9 +35,19 @@ def test_main_menu_localized_labels() -> None:
 
 def test_settings_menu_actions() -> None:
     markup = settings_menu(Strings("en"))
-    assert all_texts(markup) == ["Repositories", "Unlink"]
-    assert all_callback_data(markup) == ["menu:repos", "menu:unlink"]
-    assert all_texts(settings_menu(Strings("ru"))) == ["Репозитории", "Отвязать"]
+    assert all_texts(markup) == ["Repositories", "LLM", "Unlink", "Back to menu"]
+    assert all_callback_data(markup) == [
+        "menu:repos",
+        "menu:llm",
+        "menu:unlink",
+        "menu:menu",
+    ]
+    assert all_texts(settings_menu(Strings("ru"))) == [
+        "Репозитории",
+        "LLM",
+        "Отвязать",
+        "В меню",
+    ]
 
 
 def test_confirm_unlink_actions() -> None:
@@ -77,7 +87,10 @@ def test_repos_keyboard_layout() -> None:
     nav = [btn.callback_data for btn in keyboard[3]]
     assert nav == ["repo:page:0:0", "repo:page:0:0", "repo:page:1:0"]
     assert [btn.text for btn in keyboard[3]] == ["◀", "1/2", "▶"]
-    assert keyboard[4][0].callback_data == "menu:settings"
+
+    back_row = [btn.callback_data for btn in keyboard[4]]
+    assert back_row == ["menu:settings", "menu:menu"]
+    assert [btn.text for btn in keyboard[4]] == ["Back to settings", "Back to menu"]
 
 
 def test_repos_keyboard_clamps_nav_on_last_page() -> None:
@@ -85,6 +98,8 @@ def test_repos_keyboard_clamps_nav_on_last_page() -> None:
     markup = repos_keyboard(Strings("en"), rows, page=1, pages=2)
     nav = [btn.callback_data for btn in markup.inline_keyboard[1]]
     assert nav == ["repo:page:0:0", "repo:page:1:0", "repo:page:1:0"]
+    back_row = [btn.callback_data for btn in markup.inline_keyboard[2]]
+    assert back_row == ["menu:settings", "menu:menu"]
 
 
 def test_repos_per_page_is_five() -> None:

@@ -31,7 +31,9 @@ def main_menu(strings: Strings) -> InlineKeyboardMarkup:
 def settings_menu(strings: Strings) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=strings.get("btn.repos"), callback_data=MenuCB(action="repos"))
+    builder.button(text=strings.get("btn.llm"), callback_data=MenuCB(action="llm"))
     builder.button(text=strings.get("btn.unlink"), callback_data=MenuCB(action="unlink"))
+    builder.button(text=strings.get("btn.back"), callback_data=MenuCB(action="menu"))
     builder.adjust(2)
     return builder.as_markup()
 
@@ -100,7 +102,11 @@ def repos_keyboard(
             InlineKeyboardButton(
                 text=strings.get("btn.back_settings"),
                 callback_data=MenuCB(action="settings").pack(),
-            )
+            ),
+            InlineKeyboardButton(
+                text=strings.get("btn.back"),
+                callback_data=MenuCB(action="menu").pack(),
+            ),
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
