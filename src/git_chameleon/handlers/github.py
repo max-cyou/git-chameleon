@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 import logging
 import re
 
@@ -11,7 +10,15 @@ from git_chameleon.handlers.keyboards import main_menu, menu_text, status_text
 from git_chameleon.i18n import Strings
 from git_chameleon.scheduler import digest_text
 from git_chameleon.services.github_app import GitHubApp, Installation
-from git_chameleon.services.llm import LLMClient, chat_system_prompt
+from git_chameleon.services.llm import (
+    CHAT_MAX_TOKENS,
+    CHAT_TEMPERATURE,
+    MAX_USER_CHARS,
+    LLMClient,
+    build_pr_context,
+    chat_system_prompt,
+    markdown_to_html,
+)
 from git_chameleon.storage import Storage
 
 router = Router()
@@ -165,10 +172,11 @@ async def on_menu(message: types.Message, storage: Storage, strings: Strings) ->
 async def on_plain_text(
     message: types.Message,
     storage: Storage,
+    github_app: GitHubApp,
     strings: Strings,
     llm: LLMClient | None,
 ) -> None:
-    """Free-form text: answer via LLM chat if enabled, otherwise explain."""
+    """Free-form text: answer via LLM chat (with fresh PR context) if enabled."""
     user_id = _user_id(message)
     link = storage.ensure_user(user_id, message.chat.id)
 
@@ -179,12 +187,20 @@ async def on_plain_text(
         await message.answer(strings.get("llm.chat_disabled"), reply_markup=main_menu(strings))
         return
 
+    system = chat_system_prompt(strings.locale)
+    context = await build_pr_context(github_app, storage, link, llm)
+    if context:
+        system += "\n\n" + context
+
     try:
         answer = await llm.complete(
-            chat_system_prompt(strings.locale), message.text or ""
+            system,
+            (message.text or "")[:MAX_USER_CHARS],
+            max_tokens=CHAT_MAX_TOKENS,
+            temperature=CHAT_TEMPERATURE,
         )
     except Exception:
         logger.exception("LLM chat failed for user %s", user_id)
         await message.answer(strings.get("llm.chat_error"))
         return
-    await message.answer(html.escape(answer))
+    await message.answer(markdown_to_html(answer))
