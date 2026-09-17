@@ -10,9 +10,14 @@ from dotenv import load_dotenv
 class Settings:
     bot_token: str = field(default_factory=lambda: os.getenv("BOT_TOKEN", ""))
     github_token: str = field(default_factory=lambda: os.getenv("GITHUB_TOKEN", ""))
+    github_app_client_id: str = field(default_factory=lambda: os.getenv("GITHUB_APP_CLIENT_ID", ""))
+    github_app_private_key_path: str = field(
+        default_factory=lambda: os.getenv("GITHUB_APP_PRIVATE_KEY_PATH", "")
+    )
+    database_path: str = field(default_factory=lambda: os.getenv("DATABASE_PATH", "data/bot.db"))
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
 
 
-def load_settings() -> Settings:
-    load_dotenv()
+def load_settings(dotenv_path: str | os.PathLike | None = None) -> Settings:
+    load_dotenv(dotenv_path=dotenv_path)
     return Settings()

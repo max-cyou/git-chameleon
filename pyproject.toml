@@ -24,6 +24,7 @@ dependencies = [
     "aiogram>=3.13,<4",
     "python-dotenv>=1.0",
     "httpx>=0.27",
+    "PyJWT[crypto]>=2.8",
 ]
 
 [project.optional-dependencies]

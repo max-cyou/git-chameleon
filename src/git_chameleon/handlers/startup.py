@@ -5,7 +5,7 @@ from aiogram.types import BotCommand
 
 router = Router()
 
-commands = ["/start", "/help"]
+commands = ["/install", "/link", "/sync", "/status", "/unlink", "/help"]
 
 
 @router.startup()
