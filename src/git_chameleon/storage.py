@@ -21,9 +21,10 @@ class UserLink:
     locale: str | None = None
     llm_chat: bool = False
     llm_review: bool = False
+    llm_style: str = "default"
 
 
-_COLUMNS = "user_id, chat_id, github_login, installation_id, locale, llm_chat, llm_review"
+_COLUMNS = "user_id, chat_id, github_login, installation_id, locale, llm_chat, llm_review, llm_style"
 
 
 class Storage:
@@ -50,6 +51,10 @@ class Storage:
         for column in ("llm_chat", "llm_review"):
             if column not in columns:
                 self._conn.execute(f"ALTER TABLE user_links ADD COLUMN {column} INTEGER DEFAULT 0")
+        if "llm_style" not in columns:
+            self._conn.execute(
+                "ALTER TABLE user_links ADD COLUMN llm_style TEXT DEFAULT 'default'"
+            )
         self._conn.execute(
             """
             CREATE TABLE IF NOT EXISTS repo_selections (
@@ -89,7 +94,7 @@ class Storage:
         self._conn.commit()
 
     def _row_to_link(self, row: tuple) -> UserLink:
-        user_id, chat_id, github_login, installation_id, locale, llm_chat, llm_review = row
+        user_id, chat_id, github_login, installation_id, locale, llm_chat, llm_review, llm_style = row
         return UserLink(
             user_id=user_id,
             chat_id=chat_id,
@@ -98,6 +103,7 @@ class Storage:
             locale=locale,
             llm_chat=bool(llm_chat),
             llm_review=bool(llm_review),
+            llm_style=llm_style or "default",
         )
 
     def ensure_user(self, user_id: int, chat_id: int) -> UserLink:
@@ -150,6 +156,14 @@ class Storage:
 
     def toggle_llm_review(self, user_id: int) -> bool:
         return self._toggle_flag(user_id, "llm_review")
+
+    def set_llm_style(self, user_id: int, style: str) -> None:
+        assert style in ("default", "rustic")
+        self._conn.execute(
+            "UPDATE user_links SET llm_style = ? WHERE user_id = ?",
+            (style, user_id),
+        )
+        self._conn.commit()
 
     def get_link(self, user_id: int) -> UserLink | None:
         row = self._conn.execute(

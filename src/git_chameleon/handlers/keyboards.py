@@ -146,6 +146,15 @@ def llm_menu(strings: Strings, link: UserLink | None, provider_configured: bool)
         text=("✅ " if link and link.llm_review else "") + strings.get("btn.llm_review"),
         callback_data=MenuCB(action="llm_review"),
     )
+    style = link.llm_style if link else "default"
+    builder.button(
+        text=("✅ " if style == "default" else "") + strings.get("btn.style_default"),
+        callback_data=MenuCB(action="style_default"),
+    )
+    builder.button(
+        text=("✅ " if style == "rustic" else "") + strings.get("btn.style_rustic"),
+        callback_data=MenuCB(action="style_rustic"),
+    )
     builder.button(
         text=strings.get("btn.back_settings"), callback_data=MenuCB(action="settings")
     )

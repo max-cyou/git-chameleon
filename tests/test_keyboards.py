@@ -144,18 +144,29 @@ def test_repos_per_page_is_five() -> None:
 def test_llm_menu_toggles() -> None:
     off = UserLink(user_id=1, chat_id=1)
     markup = llm_menu(Strings("en"), off, provider_configured=False)
-    assert all_texts(markup) == ["Chat", "Review", "Back to settings", "Back to menu"]
+    assert all_texts(markup) == [
+        "Chat",
+        "Review",
+        "✅ Default",
+        "Rustic",
+        "Back to settings",
+        "Back to menu",
+    ]
     assert all_callback_data(markup) == [
         "menu:llm_chat",
         "menu:llm_review",
+        "menu:style_default",
+        "menu:style_rustic",
         "menu:settings",
         "menu:menu",
     ]
 
-    on = UserLink(user_id=1, chat_id=1, llm_chat=True, llm_review=True)
+    on = UserLink(user_id=1, chat_id=1, llm_chat=True, llm_review=True, llm_style="rustic")
     assert all_texts(llm_menu(Strings("ru"), on, provider_configured=True)) == [
         "✅ Чат",
         "✅ Ревью",
+        "Дефолт",
+        "✅ Сельский",
         "К настройкам",
         "В меню",
     ]

@@ -69,6 +69,8 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "btn.llm_chat": "Chat",
         "btn.llm_review": "Review",
+        "btn.style_default": "Default",
+        "btn.style_rustic": "Rustic",
         "llm.chat_disabled": (
             "Chat is disabled. Enable it in Settings \u2192 LLM."
         ),
@@ -198,6 +200,8 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "btn.llm_chat": "Чат",
         "btn.llm_review": "Ревью",
+        "btn.style_default": "Дефолт",
+        "btn.style_rustic": "Сельский",
         "llm.chat_disabled": (
             "Чат выключен. Включи его в Настройки \u2192 LLM."
         ),

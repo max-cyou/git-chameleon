@@ -213,7 +213,7 @@ async def on_group_text(
         return
 
     link = storage.get_link(user.id)
-    system = chat_system_prompt(strings.locale)
+    system = chat_system_prompt(strings.locale, link.llm_style if link else "default")
     if link is not None:
         context = await build_pr_context(github_app, storage, link, llm)
         if context:
@@ -261,7 +261,7 @@ async def on_plain_text(
         await message.answer(strings.get("llm.chat_disabled"), reply_markup=main_menu(strings))
         return
 
-    system = chat_system_prompt(strings.locale)
+    system = chat_system_prompt(strings.locale, link.llm_style)
     context = await build_pr_context(github_app, storage, link, llm)
     if context:
         system += "\n\n" + context

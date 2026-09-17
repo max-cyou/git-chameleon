@@ -174,6 +174,17 @@ async def cb_group_toggle(
     await _show(cb, text, keyboard)
 
 
+async def _show_llm_screen(
+    cb: types.CallbackQuery, storage: Storage, llm: LLMClient | None, strings: Strings
+) -> None:
+    link = storage.get_link(cb.from_user.id)
+    await _show(
+        cb,
+        llm_screen_text(strings, llm is not None, llm.model if llm else ""),
+        llm_menu(strings, link, llm is not None),
+    )
+
+
 @router.callback_query(MenuCB.filter(F.action == "llm"))
 async def cb_llm(
     cb: types.CallbackQuery,
@@ -182,12 +193,41 @@ async def cb_llm(
     strings: Strings,
 ) -> None:
     await cb.answer()
-    link = storage.get_link(cb.from_user.id)
-    await _show(
-        cb,
-        llm_screen_text(strings, llm is not None, llm.model if llm else ""),
-        llm_menu(strings, link, llm is not None),
-    )
+    await _show_llm_screen(cb, storage, llm, strings)
+
+
+async def _set_style(
+    cb: types.CallbackQuery,
+    storage: Storage,
+    llm: LLMClient | None,
+    strings: Strings,
+    style: str,
+) -> None:
+    storage.ensure_user(cb.from_user.id, cb.message.chat.id if cb.message else cb.from_user.id)
+    storage.set_llm_style(cb.from_user.id, style)
+    await _show_llm_screen(cb, storage, llm, strings)
+
+
+@router.callback_query(MenuCB.filter(F.action == "style_default"))
+async def cb_style_default(
+    cb: types.CallbackQuery,
+    storage: Storage,
+    llm: LLMClient | None,
+    strings: Strings,
+) -> None:
+    await cb.answer()
+    await _set_style(cb, storage, llm, strings, "default")
+
+
+@router.callback_query(MenuCB.filter(F.action == "style_rustic"))
+async def cb_style_rustic(
+    cb: types.CallbackQuery,
+    storage: Storage,
+    llm: LLMClient | None,
+    strings: Strings,
+) -> None:
+    await cb.answer()
+    await _set_style(cb, storage, llm, strings, "rustic")
 
 
 @router.callback_query(MenuCB.filter(F.action == "llm_chat"))
@@ -197,12 +237,7 @@ async def cb_llm_chat(
     await cb.answer()
     storage.ensure_user(cb.from_user.id, cb.message.chat.id if cb.message else cb.from_user.id)
     storage.toggle_llm_chat(cb.from_user.id)
-    link = storage.get_link(cb.from_user.id)
-    await _show(
-        cb,
-        llm_screen_text(strings, llm is not None, llm.model if llm else ""),
-        llm_menu(strings, link, llm is not None),
-    )
+    await _show_llm_screen(cb, storage, llm, strings)
 
 
 @router.callback_query(MenuCB.filter(F.action == "llm_review"))
@@ -212,12 +247,7 @@ async def cb_llm_review(
     await cb.answer()
     storage.ensure_user(cb.from_user.id, cb.message.chat.id if cb.message else cb.from_user.id)
     storage.toggle_llm_review(cb.from_user.id)
-    link = storage.get_link(cb.from_user.id)
-    await _show(
-        cb,
-        llm_screen_text(strings, llm is not None, llm.model if llm else ""),
-        llm_menu(strings, link, llm is not None),
-    )
+    await _show_llm_screen(cb, storage, llm, strings)
 
 
 @router.callback_query(MenuCB.filter(F.action == "repos"))

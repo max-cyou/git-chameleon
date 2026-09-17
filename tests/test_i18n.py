@@ -236,6 +236,18 @@ def test_group_tracking_and_toggles(tmp_path) -> None:
     storage.close()
 
 
+def test_llm_style_roundtrip(tmp_path) -> None:
+    storage = Storage(str(tmp_path / "test.db"))
+    storage.ensure_user(1, 100)
+    assert storage.get_link(1).llm_style == "default"
+
+    storage.set_llm_style(1, "rustic")
+    assert storage.get_link(1).llm_style == "rustic"
+    storage.set_llm_style(1, "default")
+    assert storage.get_link(1).llm_style == "default"
+    storage.close()
+
+
 def test_sent_pr_keys_roundtrip(tmp_path) -> None:
     storage = Storage(str(tmp_path / "test.db"))
     assert storage.known_pr_keys(1) == set()

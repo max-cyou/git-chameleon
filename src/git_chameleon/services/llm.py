@@ -8,57 +8,10 @@ import time
 import httpx
 
 from git_chameleon.services.github_app import GitHubApp, PRFile
+from git_chameleon.services.prompts import chat_prompt, summary_prompt
 from git_chameleon.storage import Storage, UserLink
 
 logger = logging.getLogger(__name__)
-
-CHAT_SYSTEM_PROMPTS = {
-    "en": (
-        "You are git-chameleon, an assistant inside a Telegram bot that tracks "
-        "the user's GitHub pull requests.\n"
-        "- Keep answers short: a few short paragraphs at most.\n"
-        "- Answer in the user's language.\n"
-        "- Format with Markdown: **bold**, *italic*, `code`, "
-        "fenced ```code blocks``` and [links](url).\n"
-        "- If open pull requests are listed below, treat them as ground truth "
-        "and never invent repository facts."
-    ),
-    "ru": (
-        "Ты — git-chameleon, ассистент в Telegram-боте, который следит за "
-        "pull request'ами пользователя на GitHub.\n"
-        "- Отвечай кратко: максимум несколько коротких абзацев.\n"
-        "- Отвечай на языке пользователя.\n"
-        "- Форматируй ответ в Markdown: **жирный**, *курсив*, `код`, "
-        "```блоки кода``` и [ссылки](url).\n"
-        "- Если ниже перечислены открытые pull request'ы — опирайся только "
-        "на них и не выдумывай факты о репозиториях."
-    ),
-}
-
-SUMMARY_SYSTEM_PROMPTS = {
-    "en": (
-        "You write pull request reviews for a Telegram digest. "
-        "Describe in 4-6 sentences (or a compact bullet list) what the PR "
-        "changes and why it matters. "
-        "STRICT RULES: rely only on the provided title, description, file "
-        "names and patches. Never invent functionality, motivation or "
-        "details that are not literally present. If the PR is trivial, "
-        "empty or a joke, say exactly that in one short sentence instead "
-        "of speculating. Plain text only: no Markdown, no HTML. "
-        "Answer in English."
-    ),
-    "ru": (
-        "Ты пишешь ревью pull request'ов для дайджеста в Telegram. "
-        "В 4-6 предложениях (или компактным списком) опиши, что меняет PR "
-        "и зачем это нужно. "
-        "СТРОГО: опирайся только на предоставленные заголовок, описание, "
-        "имена файлов и патчи. Не выдумывай функциональность, мотивацию и "
-        "детали, которых буквально нет. Если PR тривиальный, пустой или "
-        "шуточный — напиши прямо это одной короткой фразой вместо "
-        "домыслов. Только простой текст: без Markdown и HTML. "
-        "Ответь по-русски."
-    ),
-}
 
 CONTEXT_HEADER = {
     "en": "Currently open pull requests of the user:",
@@ -73,7 +26,7 @@ CHAT_TEMPERATURE = 0.4
 SUMMARY_MAX_TOKENS = 2000
 SUMMARY_TEMPERATURE = 0.2
 
-_summary_cache: dict[tuple[str, str, int], str] = {}
+_summary_cache: dict[tuple[str, str, int, str], str] = {}
 _pr_context_cache: dict[int, tuple[float, str | None]] = {}
 
 
@@ -119,12 +72,12 @@ class LLMClient:
         await self._client.aclose()
 
 
-def chat_system_prompt(locale: str) -> str:
-    return CHAT_SYSTEM_PROMPTS.get(locale, CHAT_SYSTEM_PROMPTS["en"])
+def chat_system_prompt(locale: str, style: str = "default") -> str:
+    return chat_prompt(style, locale)
 
 
-def summary_system_prompt(locale: str) -> str:
-    return SUMMARY_SYSTEM_PROMPTS.get(locale, SUMMARY_SYSTEM_PROMPTS["en"])
+def summary_system_prompt(locale: str, style: str = "default") -> str:
+    return summary_prompt(style, locale)
 
 
 def format_pr_files(files: list[PRFile], *, per_file: int = 1200, total: int = 6000) -> str:
@@ -153,9 +106,10 @@ async def pr_summary(
     body: str,
     locale: str,
     files: list[PRFile] | None = None,
+    style: str = "default",
 ) -> str | None:
     """Return a cached-or-fresh summary of a pull request, or None on failure."""
-    key = (owner, repo, number)
+    key = (owner, repo, number, style)
     cached = _summary_cache.get(key)
     if cached is not None:
         return cached
@@ -165,7 +119,7 @@ async def pr_summary(
         user_message += "\n\nChanged files:\n" + format_pr_files(files)
     try:
         summary = await llm.complete(
-            summary_system_prompt(locale),
+            summary_system_prompt(locale, style),
             user_message,
             max_tokens=SUMMARY_MAX_TOKENS,
             temperature=SUMMARY_TEMPERATURE,
@@ -243,7 +197,7 @@ async def _collect_pr_context(
                     files = None
                 summary = await pr_summary(
                     llm, owner, name, pr.number, pr.title, pr.body,
-                    link.locale or "en", files,
+                    link.locale or "en", files, link.llm_style,
                 )
                 if summary:
                     entry += "\n  Review: " + summary.replace("\n", " ")
@@ -262,6 +216,9 @@ _CODE_BLOCK_RE = re.compile(r"```(?:[a-zA-Z0-9_-]+)?[ \t]*\n?(.*?)```", re.DOTAL
 _INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*|__(.+?)__", re.DOTALL)
 _ITALIC_RE = re.compile(r"(?<![\*_])\*(?!\s)(.+?)(?<!\s)\*(?![\*_])", re.DOTALL)
+_STRIKE_RE = re.compile(r"~~(?!\s)(.+?)(?<!\s)~~", re.DOTALL)
+_SPOILER_RE = re.compile(r"\|\|(?!\s)(.+?)(?<!\s)\|\|", re.DOTALL)
+_UNDERLINE_RE = re.compile(r"==(?!\s)(.+?)(?<!\s)==", re.DOTALL)
 _LINK_RE = re.compile(r"\[([^\]\n]+)\]\((https?://[^\s)]+)\)")
 
 
@@ -291,6 +248,9 @@ def markdown_to_html(text: str) -> str:
     converted = _CODE_BLOCK_RE.sub(stash_code_block, escaped)
     converted = _INLINE_CODE_RE.sub(stash_inline_code, converted)
     converted = _LINK_RE.sub(stash_link, converted)
+    converted = _STRIKE_RE.sub(lambda m: f"<s>{m.group(1)}</s>", converted)
+    converted = _SPOILER_RE.sub(lambda m: f"<tg-spoiler>{m.group(1)}</tg-spoiler>", converted)
+    converted = _UNDERLINE_RE.sub(lambda m: f"<u>{m.group(1)}</u>", converted)
     converted = _BOLD_RE.sub(
         lambda m: f"<b>{m.group(1) or m.group(2)}</b>", converted
     )

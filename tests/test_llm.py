@@ -124,6 +124,35 @@ def test_markdown_to_html() -> None:
         == '<a href="https://example.com">link</a>'
     )
     assert markdown_to_html("a **b** `c` **d**") == "a <b>b</b> <code>c</code> <b>d</b>"
+    assert markdown_to_html("~~gone~~") == "<s>gone</s>"
+    assert markdown_to_html("||secret||") == "<tg-spoiler>secret</tg-spoiler>"
+    assert markdown_to_html("==mark==") == "<u>mark</u>"
+
+
+def test_prompts_styles_differ() -> None:
+    from git_chameleon.services.prompts import chat_prompt, summary_prompt
+
+    assert chat_prompt("default", "ru") != chat_prompt("rustic", "ru")
+    assert summary_prompt("default", "en") != summary_prompt("rustic", "en")
+    assert len(chat_prompt("rustic", "ru")) > 1000
+    assert len(summary_prompt("rustic", "en")) > 500
+
+
+@respx.mock
+async def test_pr_summary_style_in_cache_key() -> None:
+    route = respx.post("https://llm.example.com/v1/chat/completions").mock(
+        return_value=_completion("styled.")
+    )
+
+    client = _client()
+    llm_module._summary_cache.clear()
+    await pr_summary(client, "o", "r", 1, "t", "", "ru", style="default")
+    await pr_summary(client, "o", "r", 1, "t", "", "ru", style="default")
+    assert route.call_count == 1
+
+    await pr_summary(client, "o", "r", 1, "t", "", "ru", style="rustic")
+    assert route.call_count == 2  # different style -> new cache entry
+    await client.aclose()
 
 
 def test_markdown_to_html_escapes_raw_html() -> None:
