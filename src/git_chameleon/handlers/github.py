@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import re
 
-from aiogram import F, Router, types
+from aiogram import Bot, F, Router, types
 from aiogram.filters import Command
 
 from git_chameleon.handlers.keyboards import (
@@ -176,28 +176,29 @@ async def on_menu(message: types.Message, storage: Storage, strings: Strings) ->
     )
 
 
-async def _mentions_bot(message: types.Message) -> bool:
-    bot = message.bot
-    if bot is None:
-        return False
+async def _mentions_bot(message: types.Message, bot: Bot) -> bool:
     me = await bot.me()
     username = me.username or ""
     return bool(username) and f"@{username}".lower() in (message.text or "").lower()
 
 
-@router.message(F.chat.type.in_({"group", "supergroup"}), F.text, _mentions_bot)
-async def on_group_mention(
+@router.message(F.chat.type.in_({"group", "supergroup"}), F.text)
+async def on_group_text(
     message: types.Message,
     storage: Storage,
     github_app: GitHubApp,
     strings: Strings,
     llm: LLMClient | None,
+    bot: Bot,
 ) -> None:
-    """In groups the bot answers via LLM when mentioned."""
+    """In groups: track members, answer via LLM when the bot is mentioned."""
     user = message.from_user
     if user is None or user.is_bot:
         return
     storage.upsert_group(message.chat.id, message.chat.title or "", user.id)
+
+    if not await _mentions_bot(message, bot):
+        return
     if llm is None:
         await message.reply(strings.get("llm.not_configured"))
         return
