@@ -22,7 +22,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "Commands:\n"
             "/menu - open the control panel\n"
             "/install - link to install the GitHub App\n"
-            "/link <username> - bind your GitHub account\n"
+            "/link &lt;username&gt; - bind your GitHub account\n"
             "/sync - refresh installations and report open PRs\n"
             "/status - show your current binding\n"
             "/unlink - remove the binding\n"
@@ -30,14 +30,14 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "menu.title": "<b>git-chameleon control panel</b>",
         "menu.not_linked": (
-            "Not linked. Press Linking or send /link <github-username>."
+            "Not linked. Press Linking or send /link &lt;github-username&gt;."
         ),
         "menu.no_installation": (
             "GitHub: @{login} (no installation yet, press Linking)."
         ),
         "menu.linked": "GitHub: @{login}\nInstallation: #{installation_id}",
         "status.not_linked": (
-            "Not linked. Press Linking or send /link <github-username>."
+            "Not linked. Press Linking or send /link &lt;github-username&gt;."
         ),
         "status.no_installation": (
             "GitHub: @{login}\nNo installation matched yet. Press Linking."
@@ -99,9 +99,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "repos.next": "\u25b6",
         "install.text": (
             "Open this link and press the Install button:\n\n{url}\n\n"
-            "Afterwards send /link <your-github-username>"
+            "Afterwards send /link &lt;your-github-username&gt;"
         ),
-        "link.usage": "Usage: /link <github-username>",
+        "link.usage": "Usage: /link &lt;github-username&gt;",
         "link.no_installation": (
             "No installation for @{login} yet. Open /install to add it, then /sync."
         ),
@@ -110,7 +110,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "One step left: pick repositories for your news in "
             "Settings \u2192 Repositories."
         ),
-        "sync.not_linked": "Run /link <your-github-username> first.",
+        "sync.not_linked": "Run /link &lt;your-github-username&gt; first.",
         "sync.no_installation": "No installation for @{login} yet. Open /install to add it.",
         "sync.linked_digest": "Linked to installation #{installation_id}.\n\n{digest}",
         "sync.linked_no_prs": "Linked to installation #{installation_id}. No open PRs.",
@@ -151,7 +151,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "Команды:\n"
             "/menu - открыть панель управления\n"
             "/install - ссылка на установку GitHub App\n"
-            "/link <username> - привязать аккаунт GitHub\n"
+            "/link &lt;username&gt; - привязать аккаунт GitHub\n"
             "/sync - обновить установки и показать открытые PR\n"
             "/status - показать текущую привязку\n"
             "/unlink - отвязать аккаунт\n"
@@ -159,14 +159,14 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "menu.title": "<b>Панель управления git-chameleon</b>",
         "menu.not_linked": (
-            "Аккаунт не привязан. Нажми «Привязка» или отправь /link <имя-пользователя>."
+            "Аккаунт не привязан. Нажми «Привязка» или отправь /link &lt;имя-пользователя&gt;."
         ),
         "menu.no_installation": (
             "GitHub: @{login} (установка ещё не найдена, нажми «Привязка»)."
         ),
         "menu.linked": "GitHub: @{login}\nУстановка: #{installation_id}",
         "status.not_linked": (
-            "Аккаунт не привязан. Нажми «Привязка» или отправь /link <имя-пользователя>."
+            "Аккаунт не привязан. Нажми «Привязка» или отправь /link &lt;имя-пользователя&gt;."
         ),
         "status.no_installation": (
             "GitHub: @{login}\nУстановка ещё не найдена. Нажми «Привязка»."
@@ -228,9 +228,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "repos.next": "\u25b6",
         "install.text": (
             "Открой ссылку и нажми кнопку Install:\n\n{url}\n\n"
-            "Затем отправь /link <имя-пользователя-github>"
+            "Затем отправь /link &lt;имя-пользователя-github&gt;"
         ),
-        "link.usage": "Использование: /link <имя-пользователя-github>",
+        "link.usage": "Использование: /link &lt;имя-пользователя-github&gt;",
         "link.no_installation": (
             "Установка для @{login} ещё не найдена. Открой /install, затем /sync."
         ),
@@ -239,7 +239,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "Остался последний шаг: выбери репозитории для новостей в "
             "«Настройки \u2192 Репозитории»."
         ),
-        "sync.not_linked": "Сначала отправь /link <имя-пользователя-github>.",
+        "sync.not_linked": "Сначала отправь /link &lt;имя-пользователя-github&gt;.",
         "sync.no_installation": "Установка для @{login} ещё не найдена. Открой /install.",
         "sync.linked_digest": "Привязано к установке #{installation_id}.\n\n{digest}",
         "sync.linked_no_prs": "Привязано к установке #{installation_id}. Открытых PR нет.",
