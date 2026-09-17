@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "git-chameleon"
-version = "0.1.0"
+version = "1.0.0"
 description = "An AI teammate for your repositories — understands the code, reviews pull requests, answers questions, and lives where your team already talks."
 readme = "README.md"
 requires-python = ">=3.10"
