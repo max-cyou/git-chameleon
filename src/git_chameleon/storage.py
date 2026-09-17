@@ -11,6 +11,10 @@ class UserLink:
     chat_id: int
     github_login: str | None = None
     installation_id: int | None = None
+    locale: str | None = None
+
+
+_COLUMNS = "user_id, chat_id, github_login, installation_id, locale"
 
 
 class Storage:
@@ -26,19 +30,24 @@ class Storage:
                 user_id INTEGER PRIMARY KEY,
                 chat_id INTEGER NOT NULL,
                 github_login TEXT UNIQUE,
-                installation_id INTEGER
+                installation_id INTEGER,
+                locale TEXT
             )
             """
         )
+        columns = {row[1] for row in self._conn.execute("PRAGMA table_info(user_links)")}
+        if "locale" not in columns:
+            self._conn.execute("ALTER TABLE user_links ADD COLUMN locale TEXT")
         self._conn.commit()
 
     def _row_to_link(self, row: tuple) -> UserLink:
-        user_id, chat_id, github_login, installation_id = row
+        user_id, chat_id, github_login, installation_id, locale = row
         return UserLink(
             user_id=user_id,
             chat_id=chat_id,
             github_login=github_login,
             installation_id=installation_id,
+            locale=locale,
         )
 
     def ensure_user(self, user_id: int, chat_id: int) -> UserLink:
@@ -50,6 +59,16 @@ class Storage:
         link = self.get_link(user_id)
         assert link is not None
         return link
+
+    def set_locale(self, user_id: int, chat_id: int, locale: str) -> None:
+        self._conn.execute(
+            """
+            INSERT INTO user_links (user_id, chat_id, locale) VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET locale = excluded.locale
+            """,
+            (user_id, chat_id, locale),
+        )
+        self._conn.commit()
 
     def set_github_login(self, user_id: int, github_login: str) -> None:
         self._conn.execute(
@@ -67,7 +86,7 @@ class Storage:
 
     def get_link(self, user_id: int) -> UserLink | None:
         row = self._conn.execute(
-            "SELECT user_id, chat_id, github_login, installation_id FROM user_links WHERE user_id = ?",
+            f"SELECT {_COLUMNS} FROM user_links WHERE user_id = ?",
             (user_id,),
         ).fetchone()
         return self._row_to_link(row) if row else None
@@ -80,9 +99,7 @@ class Storage:
         self._conn.commit()
 
     def all_links(self) -> list[UserLink]:
-        rows = self._conn.execute(
-            "SELECT user_id, chat_id, github_login, installation_id FROM user_links"
-        ).fetchall()
+        rows = self._conn.execute(f"SELECT {_COLUMNS} FROM user_links").fetchall()
         links: list[UserLink] = []
         for row in rows:
             link = self._row_to_link(row)
@@ -92,7 +109,7 @@ class Storage:
 
     def find_by_login(self, github_login: str) -> UserLink | None:
         row = self._conn.execute(
-            "SELECT user_id, chat_id, github_login, installation_id FROM user_links WHERE lower(github_login) = lower(?)",
+            f"SELECT {_COLUMNS} FROM user_links WHERE lower(github_login) = lower(?)",
             (github_login,),
         ).fetchone()
         return self._row_to_link(row) if row else None

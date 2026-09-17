@@ -9,6 +9,7 @@ from aiogram import Bot, Dispatcher
 
 from git_chameleon.config import load_settings
 from git_chameleon.handlers import main_router
+from git_chameleon.i18n import I18nMiddleware
 from git_chameleon.scheduler import Scheduler
 from git_chameleon.services.github_app import GitHubApp
 from git_chameleon.storage import Storage
@@ -33,6 +34,7 @@ async def main() -> None:
         settings.github_app_private_key_path,
     )
     dispatcher.workflow_data.update(storage=storage, github_app=github_app)
+    dispatcher.update.outer_middleware(I18nMiddleware())
     dispatcher.include_router(main_router)
 
     scheduler = Scheduler(bot, storage, github_app)

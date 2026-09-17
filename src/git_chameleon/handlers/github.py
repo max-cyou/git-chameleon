@@ -6,6 +6,7 @@ from aiogram import Router, types
 from aiogram.filters import Command
 
 from git_chameleon.handlers.keyboards import main_menu, menu_text, status_text
+from git_chameleon.i18n import Strings
 from git_chameleon.scheduler import digest_text
 from git_chameleon.services.github_app import GitHubApp, Installation
 from git_chameleon.storage import Storage
@@ -38,93 +39,101 @@ async def _find_installation(github_app: GitHubApp, login: str) -> Installation 
     )
 
 
-async def install_text(github_app: GitHubApp) -> str:
+async def install_text(github_app: GitHubApp, strings: Strings) -> str:
     slug = await github_app.get_slug()
-    return (
-        "Open this link and press the Install button:\n\n"
-        f"{github_app.install_url(slug)}\n\n"
-        "Afterwards send /link <your-github-username>"
-    )
+    return strings.get("install.text", url=github_app.install_url(slug))
 
 
 async def link_user(
-    github_app: GitHubApp, storage: Storage, user_id: int, login: str
+    github_app: GitHubApp, storage: Storage, user_id: int, login: str, strings: Strings
 ) -> str:
     storage.set_github_login(user_id, login)
 
     installation = await _find_installation(github_app, login)
     if installation is None:
-        return f"No installation for @{login} yet. Open /install to add it, then /sync."
+        return strings.get("link.no_installation", login=login)
 
     storage.set_installation(user_id, installation.id)
-    return f"Linked @{login} (installation #{installation.id})."
+    return strings.get("link.linked", login=login, installation_id=installation.id)
 
 
-async def sync_user(github_app: GitHubApp, storage: Storage, user_id: int) -> str:
+async def sync_user(
+    github_app: GitHubApp, storage: Storage, user_id: int, strings: Strings
+) -> str:
     link = storage.get_link(user_id)
     if link is None or not link.github_login:
-        return "Run /link <your-github-username> first."
+        return strings.get("sync.not_linked")
 
     installation = await _find_installation(github_app, link.github_login)
     if installation is None:
-        return f"No installation for @{link.github_login} yet. Open /install to add it."
+        return strings.get("sync.no_installation", login=link.github_login)
 
     storage.set_installation(user_id, installation.id)
     link = storage.get_link(user_id)
-    digest = await digest_text(github_app, link) if link else None
+    digest = await digest_text(github_app, link, strings) if link else None
     if digest:
-        return f"Linked to installation #{installation.id}.\n\n{digest}"
-    return f"Linked to installation #{installation.id}. No open PRs."
+        return strings.get(
+            "sync.linked_digest", installation_id=installation.id, digest=digest
+        )
+    return strings.get("sync.linked_no_prs", installation_id=installation.id)
 
 
 @router.message(Command("install"))
-async def on_install(message: types.Message, storage: Storage, github_app: GitHubApp) -> None:
+async def on_install(
+    message: types.Message, storage: Storage, github_app: GitHubApp, strings: Strings
+) -> None:
     storage.ensure_user(_user_id(message), message.chat.id)
-    text = await install_text(github_app)
-    await message.answer(text, reply_markup=main_menu())
+    text = await install_text(github_app, strings)
+    await message.answer(text, reply_markup=main_menu(strings))
 
 
 @router.message(Command("link"))
-async def on_link(message: types.Message, storage: Storage, github_app: GitHubApp) -> None:
+async def on_link(
+    message: types.Message, storage: Storage, github_app: GitHubApp, strings: Strings
+) -> None:
     user_id = _user_id(message)
     storage.ensure_user(user_id, message.chat.id)
 
     login = _extract_login(message.text or "")
     if login is None:
-        await message.answer("Usage: /link <github-username>")
+        await message.answer(strings.get("link.usage"))
         return
 
-    text = await link_user(github_app, storage, user_id, login)
-    await message.answer(text, reply_markup=main_menu())
+    text = await link_user(github_app, storage, user_id, login, strings)
+    await message.answer(text, reply_markup=main_menu(strings))
 
 
 @router.message(Command("sync"))
-async def on_sync(message: types.Message, storage: Storage, github_app: GitHubApp) -> None:
+async def on_sync(
+    message: types.Message, storage: Storage, github_app: GitHubApp, strings: Strings
+) -> None:
     user_id = _user_id(message)
     storage.ensure_user(user_id, message.chat.id)
-    text = await sync_user(github_app, storage, user_id)
-    await message.answer(text, reply_markup=main_menu())
+    text = await sync_user(github_app, storage, user_id, strings)
+    await message.answer(text, reply_markup=main_menu(strings))
 
 
 @router.message(Command("unlink"))
-async def on_unlink(message: types.Message, storage: Storage) -> None:
+async def on_unlink(message: types.Message, storage: Storage, strings: Strings) -> None:
     user_id = _user_id(message)
     storage.ensure_user(user_id, message.chat.id)
     storage.clear_link(user_id)
-    await message.answer("Unlinked.", reply_markup=main_menu())
+    await message.answer(strings.get("unlink.done"), reply_markup=main_menu(strings))
 
 
 @router.message(Command("status"))
-async def on_status(message: types.Message, storage: Storage, github_app: GitHubApp) -> None:
+async def on_status(
+    message: types.Message, storage: Storage, github_app: GitHubApp, strings: Strings
+) -> None:
     user_id = _user_id(message)
     storage.ensure_user(user_id, message.chat.id)
     link = storage.get_link(user_id)
-    await message.answer(status_text(link), reply_markup=main_menu())
+    await message.answer(status_text(strings, link), reply_markup=main_menu(strings))
 
 
 @router.message(Command("menu"))
-async def on_menu(message: types.Message, storage: Storage) -> None:
+async def on_menu(message: types.Message, storage: Storage, strings: Strings) -> None:
     user_id = _user_id(message)
     storage.ensure_user(user_id, message.chat.id)
     link = storage.get_link(user_id)
-    await message.answer(menu_text(link), reply_markup=main_menu())
+    await message.answer(menu_text(strings, link), reply_markup=main_menu(strings))

@@ -5,6 +5,7 @@ import logging
 
 from aiogram import Bot
 
+from git_chameleon.i18n import Strings
 from git_chameleon.services.github_app import GitHubApp
 from git_chameleon.storage import Storage, UserLink
 
@@ -14,15 +15,20 @@ SYNC_INTERVAL_SECONDS = 60
 DIGEST_INTERVAL_SECONDS = 300
 
 
-def _fmt_pr(owner: str, repo: str, number: int, title: str, is_draft: bool) -> str:
-    draft = " [draft]" if is_draft else ""
+def _fmt_pr(
+    owner: str, repo: str, number: int, title: str, is_draft: bool, draft_marker: str
+) -> str:
+    draft = f" {draft_marker}" if is_draft else ""
     return f"#{number}{draft} {title} ({owner}/{repo})"
 
 
-async def digest_text(github_app: GitHubApp, link: UserLink) -> str | None:
+async def digest_text(
+    github_app: GitHubApp, link: UserLink, strings: Strings | None = None
+) -> str | None:
     """Return a text digest of open pull requests, or None if nothing to report."""
     if not link.installation_id:
         return None
+    strings = strings or Strings(link.locale)
     token = await github_app.installation_token(link.installation_id)
     repos = await github_app.list_repositories(token)
 
@@ -35,11 +41,21 @@ async def digest_text(github_app: GitHubApp, link: UserLink) -> str | None:
         except Exception:
             logger.exception("Failed to fetch pull requests for %s/%s", owner, name)
             continue
-        lines.extend(_fmt_pr(owner, name, pr.number, pr.title, pr.is_draft) for pr in pulls)
+        lines.extend(
+            _fmt_pr(
+                owner,
+                name,
+                pr.number,
+                pr.title,
+                pr.is_draft,
+                strings.get("digest.draft"),
+            )
+            for pr in pulls
+        )
 
     if not lines:
         return None
-    return "Open PRs:\n\n" + "\n".join(lines)
+    return strings.get("digest.title") + "\n\n" + "\n".join(lines)
 
 
 class Scheduler:
@@ -76,7 +92,7 @@ class Scheduler:
 
     async def check_prs(self) -> None:
         for link in self._storage.all_links():
-            digest = await digest_text(self._github_app, link)
+            digest = await digest_text(self._github_app, link, Strings(link.locale))
             if digest == self._last_digest.get(link.user_id):
                 continue
             self._last_digest[link.user_id] = digest
