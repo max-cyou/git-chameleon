@@ -1,2 +1,2 @@
 # git-chameleon
-A Telegram bot for developers and teams to connect to GitHub repositories.
+An AI teammate for your repositories — understands the code, reviews pull requests, answers questions, and lives where your team already talks.

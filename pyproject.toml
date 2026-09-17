@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "git-chameleon"
+version = "0.1.0"
+description = "An AI teammate for your repositories — understands the code, reviews pull requests, answers questions, and lives where your team already talks."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Max Rukhlyadko" }]
+keywords = ["telegram", "bot", "github", "aiogram"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Communications :: Chat",
+]
+dependencies = [
+    "aiogram>=3.13,<4",
+    "python-dotenv>=1.0",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+]
+
+[project.scripts]
+git-chameleon = "git_chameleon.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/git_chameleon"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+
+[tool.coverage.run]
+source = ["git_chameleon"]
