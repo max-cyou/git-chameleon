@@ -1,0 +1,52 @@
+from git_chameleon.handlers.keyboards import (
+    MenuCB,
+    back_to_menu,
+    confirm_unlink,
+    main_menu,
+    menu_text,
+    status_text,
+)
+from git_chameleon.storage import UserLink
+
+
+def all_callback_data(markup) -> list[str]:
+    return [btn.callback_data for row in markup.inline_keyboard for btn in row]
+
+
+def test_main_menu_actions() -> None:
+    data = all_callback_data(main_menu())
+    assert "menu:status" in data
+    assert "menu:sync" in data
+    assert "menu:install" in data
+    assert "menu:unlink" in data
+
+
+def test_confirm_unlink_actions() -> None:
+    data = all_callback_data(confirm_unlink())
+    assert data == ["menu:unlink_confirm", "menu:menu"]
+
+
+def test_back_to_menu_action() -> None:
+    assert all_callback_data(back_to_menu()) == ["menu:menu"]
+
+
+def test_menu_cb_pack() -> None:
+    assert MenuCB(action="sync").pack() == "menu:sync"
+
+
+def test_texts_without_link() -> None:
+    assert "Not linked" in status_text(None)
+    assert "Not linked" in menu_text(None)
+
+
+def test_texts_with_installation() -> None:
+    link = UserLink(user_id=1, chat_id=1, github_login="octocat", installation_id=42)
+    assert status_text(link) == "GitHub: @octocat\nInstallation: #42"
+    assert "@octocat" in menu_text(link)
+    assert "#42" in menu_text(link)
+
+
+def test_texts_login_without_installation() -> None:
+    link = UserLink(user_id=1, chat_id=1, github_login="octocat")
+    assert "No installation" in status_text(link)
+    assert "no installation" in menu_text(link).lower()
