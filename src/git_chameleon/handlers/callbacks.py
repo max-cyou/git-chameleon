@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 from aiogram import F, Router, types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import InlineKeyboardMarkup
 
 from git_chameleon.handlers.github import install_text, sync_user
 from git_chameleon.handlers.keyboards import (
+    REPOS_PER_PAGE,
     MenuCB,
+    RepoCB,
     back_to_menu,
+    back_to_settings,
     confirm_unlink,
     main_menu,
     menu_text,
-    status_text,
+    repos_keyboard,
+    settings_menu,
 )
 from git_chameleon.i18n import Strings
 from git_chameleon.services.github_app import GitHubApp
@@ -23,9 +28,51 @@ async def _show(cb: types.CallbackQuery, text: str, keyboard: InlineKeyboardMark
     """Edit the original menu message, or send a fresh one if it is inaccessible."""
     message = cb.message
     if isinstance(message, types.Message):
-        await message.edit_text(text, reply_markup=keyboard)
+        try:
+            await message.edit_text(text, reply_markup=keyboard)
+        except TelegramBadRequest as exc:
+            if "message is not modified" not in str(exc):
+                raise
     elif cb.bot is not None:
         await cb.bot.send_message(cb.from_user.id, text, reply_markup=keyboard)
+
+
+async def _repos_view(
+    github_app: GitHubApp,
+    storage: Storage,
+    user_id: int,
+    strings: Strings,
+    page: int,
+) -> tuple[str, InlineKeyboardMarkup]:
+    link = storage.get_link(user_id)
+    if link is None or not link.installation_id:
+        return strings.get("repos.not_linked"), back_to_settings(strings)
+
+    token = await github_app.installation_token(link.installation_id)
+    repos = sorted(
+        await github_app.list_repositories(token),
+        key=lambda repo: repo["full_name"].lower(),
+    )
+    if not repos:
+        return strings.get("repos.none"), back_to_settings(strings)
+
+    pages = -(-len(repos) // REPOS_PER_PAGE)
+    page = max(0, min(page, pages - 1))
+    selected = storage.selected_repo_ids(user_id)
+    chunk = repos[page * REPOS_PER_PAGE : (page + 1) * REPOS_PER_PAGE]
+    rows = [(repo["id"], repo["full_name"], repo["id"] in selected) for repo in chunk]
+
+    text = "\n".join(
+        (
+            strings.get("repos.title"),
+            strings.get("repos.count", total=len(repos)),
+            strings.get("repos.selected", selected=len(selected)),
+            strings.get("repos.page_info", page=page + 1, pages=pages),
+            "",
+            strings.get("repos.hint"),
+        )
+    )
+    return text, repos_keyboard(strings, rows, page, pages)
 
 
 @router.callback_query(MenuCB.filter(F.action == "menu"))
@@ -35,35 +82,70 @@ async def cb_menu(cb: types.CallbackQuery, storage: Storage, strings: Strings) -
     await _show(cb, menu_text(strings, link), main_menu(strings))
 
 
-@router.callback_query(MenuCB.filter(F.action == "status"))
-async def cb_status(cb: types.CallbackQuery, storage: Storage, strings: Strings) -> None:
-    await cb.answer()
-    link = storage.get_link(cb.from_user.id)
-    await _show(cb, status_text(strings, link), back_to_menu(strings))
-
-
-@router.callback_query(MenuCB.filter(F.action == "sync"))
-async def cb_sync(
+@router.callback_query(MenuCB.filter(F.action == "link"))
+async def cb_link(
     cb: types.CallbackQuery, storage: Storage, github_app: GitHubApp, strings: Strings
 ) -> None:
     await cb.answer()
     user_id = cb.from_user.id
     chat_id = cb.message.chat.id if cb.message is not None else user_id
     storage.ensure_user(user_id, chat_id)
-    text = await sync_user(github_app, storage, user_id, strings)
+
+    link = storage.get_link(user_id)
+    if link is None or not link.github_login:
+        text = await install_text(github_app, strings)
+    else:
+        text = await sync_user(github_app, storage, user_id, strings)
     await _show(cb, text, back_to_menu(strings))
 
 
-@router.callback_query(MenuCB.filter(F.action == "install"))
-async def cb_install(
+@router.callback_query(MenuCB.filter(F.action == "settings"))
+async def cb_settings(cb: types.CallbackQuery, strings: Strings) -> None:
+    await cb.answer()
+    await _show(cb, strings.get("settings.text"), settings_menu(strings))
+
+
+@router.callback_query(MenuCB.filter(F.action == "repos"))
+async def cb_repos(
     cb: types.CallbackQuery, storage: Storage, github_app: GitHubApp, strings: Strings
 ) -> None:
     await cb.answer()
-    user_id = cb.from_user.id
-    chat_id = cb.message.chat.id if cb.message is not None else user_id
-    storage.ensure_user(user_id, chat_id)
-    text = await install_text(github_app, strings)
-    await _show(cb, text, back_to_menu(strings))
+    text, keyboard = await _repos_view(
+        github_app, storage, cb.from_user.id, strings, page=0
+    )
+    await _show(cb, text, keyboard)
+
+
+@router.callback_query(RepoCB.filter(F.action == "page"))
+async def cb_repo_page(
+    cb: types.CallbackQuery,
+    callback_data: RepoCB,
+    storage: Storage,
+    github_app: GitHubApp,
+    strings: Strings,
+) -> None:
+    await cb.answer()
+    text, keyboard = await _repos_view(
+        github_app, storage, cb.from_user.id, strings, page=callback_data.page
+    )
+    await _show(cb, text, keyboard)
+
+
+@router.callback_query(RepoCB.filter(F.action == "toggle"))
+async def cb_repo_toggle(
+    cb: types.CallbackQuery,
+    callback_data: RepoCB,
+    storage: Storage,
+    github_app: GitHubApp,
+    strings: Strings,
+) -> None:
+    await cb.answer()
+    if callback_data.repo_id:
+        storage.toggle_repo(cb.from_user.id, callback_data.repo_id)
+    text, keyboard = await _repos_view(
+        github_app, storage, cb.from_user.id, strings, page=callback_data.page
+    )
+    await _show(cb, text, keyboard)
 
 
 @router.callback_query(MenuCB.filter(F.action == "unlink"))

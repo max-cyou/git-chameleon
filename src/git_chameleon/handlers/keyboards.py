@@ -1,22 +1,36 @@
 from __future__ import annotations
 
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from git_chameleon.i18n import Strings
 from git_chameleon.storage import UserLink
+
+REPOS_PER_PAGE = 5
 
 
 class MenuCB(CallbackData, prefix="menu"):
     action: str
 
 
+class RepoCB(CallbackData, prefix="repo"):
+    action: str
+    page: int
+    repo_id: int = 0
+
+
 def main_menu(strings: Strings) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text=strings.get("btn.status"), callback_data=MenuCB(action="status"))
-    builder.button(text=strings.get("btn.sync"), callback_data=MenuCB(action="sync"))
-    builder.button(text=strings.get("btn.install"), callback_data=MenuCB(action="install"))
+    builder.button(text=strings.get("btn.link"), callback_data=MenuCB(action="link"))
+    builder.button(text=strings.get("btn.settings"), callback_data=MenuCB(action="settings"))
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def settings_menu(strings: Strings) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=strings.get("btn.repos"), callback_data=MenuCB(action="repos"))
     builder.button(text=strings.get("btn.unlink"), callback_data=MenuCB(action="unlink"))
     builder.adjust(2)
     return builder.as_markup()
@@ -27,7 +41,7 @@ def confirm_unlink(strings: Strings) -> InlineKeyboardMarkup:
     builder.button(
         text=strings.get("btn.unlink_confirm"), callback_data=MenuCB(action="unlink_confirm")
     )
-    builder.button(text=strings.get("btn.cancel"), callback_data=MenuCB(action="menu"))
+    builder.button(text=strings.get("btn.cancel"), callback_data=MenuCB(action="settings"))
     builder.adjust(2)
     return builder.as_markup()
 
@@ -36,6 +50,60 @@ def back_to_menu(strings: Strings) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=strings.get("btn.back"), callback_data=MenuCB(action="menu"))
     return builder.as_markup()
+
+
+def back_to_settings(strings: Strings) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=strings.get("btn.back_settings"), callback_data=MenuCB(action="settings")
+    )
+    return builder.as_markup()
+
+
+def repos_keyboard(
+    strings: Strings, rows: list[tuple[int, str, bool]], page: int, pages: int
+) -> InlineKeyboardMarkup:
+    """Repository picker: one toggle button per repo plus a pagination row."""
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text=("✅ " if selected else "") + name,
+                callback_data=RepoCB(
+                    action="toggle", page=page, repo_id=repo_id
+                ).pack(),
+            )
+        ]
+        for repo_id, name, selected in rows
+    ]
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                text=strings.get("repos.prev"),
+                callback_data=RepoCB(
+                    action="page", page=max(0, page - 1), repo_id=0
+                ).pack(),
+            ),
+            InlineKeyboardButton(
+                text=strings.get("repos.page_label", page=page + 1, pages=pages),
+                callback_data=RepoCB(action="page", page=page, repo_id=0).pack(),
+            ),
+            InlineKeyboardButton(
+                text=strings.get("repos.next"),
+                callback_data=RepoCB(
+                    action="page", page=min(pages - 1, page + 1), repo_id=0
+                ).pack(),
+            ),
+        ]
+    )
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                text=strings.get("btn.back_settings"),
+                callback_data=MenuCB(action="settings").pack(),
+            )
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def menu_text(strings: Strings, link: UserLink | None) -> str:

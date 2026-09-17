@@ -54,7 +54,10 @@ async def link_user(
         return strings.get("link.no_installation", login=login)
 
     storage.set_installation(user_id, installation.id)
-    return strings.get("link.linked", login=login, installation_id=installation.id)
+    text = strings.get("link.linked", login=login, installation_id=installation.id)
+    if not storage.selected_repo_ids(user_id):
+        text += "\n\n" + strings.get("link.notify_repos")
+    return text
 
 
 async def sync_user(
@@ -69,8 +72,12 @@ async def sync_user(
         return strings.get("sync.no_installation", login=link.github_login)
 
     storage.set_installation(user_id, installation.id)
+    selected = storage.selected_repo_ids(user_id)
+    if not selected:
+        return strings.get("sync.no_repos", installation_id=installation.id)
+
     link = storage.get_link(user_id)
-    digest = await digest_text(github_app, link, strings) if link else None
+    digest = await digest_text(github_app, link, strings, selected) if link else None
     if digest:
         return strings.get(
             "sync.linked_digest", installation_id=installation.id, digest=digest

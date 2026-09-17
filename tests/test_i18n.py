@@ -15,9 +15,9 @@ def test_normalize_locale() -> None:
 
 
 def test_strings_lookup_and_format() -> None:
-    assert Strings("en").get("btn.status") == "Status"
-    assert Strings("ru").get("btn.status") == "Статус"
-    assert Strings("de").get("btn.status") == "Status"
+    assert Strings("en").get("btn.settings") == "Settings"
+    assert Strings("ru").get("btn.settings") == "Настройки"
+    assert Strings("de").get("btn.settings") == "Settings"
     assert (
         Strings("en").get("link.linked", login="octocat", installation_id=7)
         == "Linked @octocat (installation #7)."
@@ -120,4 +120,28 @@ def test_storage_migration_adds_locale_column(tmp_path) -> None:
 
     storage.set_locale(1, 100, "ru")
     assert storage.get_link(1).locale == "ru"
+    storage.close()
+
+
+def test_repo_selection_roundtrip(tmp_path) -> None:
+    storage = Storage(str(tmp_path / "test.db"))
+    storage.ensure_user(1, 100)
+
+    assert storage.selected_repo_ids(1) == set()
+    assert storage.toggle_repo(1, 11) is True
+    assert storage.toggle_repo(1, 22) is True
+    assert storage.selected_repo_ids(1) == {11, 22}
+    assert storage.toggle_repo(1, 11) is False
+    assert storage.selected_repo_ids(1) == {22}
+    storage.close()
+
+
+def test_clear_link_removes_repo_selection(tmp_path) -> None:
+    storage = Storage(str(tmp_path / "test.db"))
+    storage.ensure_user(1, 100)
+    storage.set_github_login(1, "octocat")
+    storage.toggle_repo(1, 11)
+
+    storage.clear_link(1)
+    assert storage.selected_repo_ids(1) == set()
     storage.close()

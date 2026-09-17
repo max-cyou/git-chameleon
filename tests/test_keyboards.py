@@ -1,9 +1,14 @@
 from git_chameleon.handlers.keyboards import (
+    REPOS_PER_PAGE,
     MenuCB,
+    RepoCB,
     back_to_menu,
+    back_to_settings,
     confirm_unlink,
     main_menu,
     menu_text,
+    repos_keyboard,
+    settings_menu,
     status_text,
 )
 from git_chameleon.i18n import Strings
@@ -14,32 +19,76 @@ def all_callback_data(markup) -> list[str]:
     return [btn.callback_data for row in markup.inline_keyboard for btn in row]
 
 
+def all_texts(markup) -> list[str]:
+    return [btn.text for row in markup.inline_keyboard for btn in row]
+
+
 def test_main_menu_actions() -> None:
-    data = all_callback_data(main_menu(Strings("en")))
-    assert "menu:status" in data
-    assert "menu:sync" in data
-    assert "menu:install" in data
-    assert "menu:unlink" in data
+    markup = main_menu(Strings("en"))
+    assert all_texts(markup) == ["Linking", "Settings"]
+    assert all_callback_data(markup) == ["menu:link", "menu:settings"]
 
 
 def test_main_menu_localized_labels() -> None:
-    en = [btn.text for row in main_menu(Strings("en")).inline_keyboard for btn in row]
-    ru = [btn.text for row in main_menu(Strings("ru")).inline_keyboard for btn in row]
-    assert en == ["Status", "Sync now", "Install App", "Unlink"]
-    assert ru == ["Статус", "Синхронизировать", "Установить приложение", "Отвязать"]
+    assert all_texts(main_menu(Strings("ru"))) == ["Привязка", "Настройки"]
+
+
+def test_settings_menu_actions() -> None:
+    markup = settings_menu(Strings("en"))
+    assert all_texts(markup) == ["Repositories", "Unlink"]
+    assert all_callback_data(markup) == ["menu:repos", "menu:unlink"]
+    assert all_texts(settings_menu(Strings("ru"))) == ["Репозитории", "Отвязать"]
 
 
 def test_confirm_unlink_actions() -> None:
     data = all_callback_data(confirm_unlink(Strings("en")))
-    assert data == ["menu:unlink_confirm", "menu:menu"]
+    assert data == ["menu:unlink_confirm", "menu:settings"]
 
 
-def test_back_to_menu_action() -> None:
+def test_back_buttons() -> None:
     assert all_callback_data(back_to_menu(Strings("en"))) == ["menu:menu"]
+    assert all_callback_data(back_to_settings(Strings("en"))) == ["menu:settings"]
 
 
 def test_menu_cb_pack() -> None:
-    assert MenuCB(action="sync").pack() == "menu:sync"
+    assert MenuCB(action="link").pack() == "menu:link"
+
+
+def test_repo_cb_pack() -> None:
+    assert RepoCB(action="toggle", page=2, repo_id=123).pack() == "repo:toggle:2:123"
+    assert RepoCB(action="page", page=1, repo_id=0).pack() == "repo:page:1:0"
+
+
+def test_repos_keyboard_layout() -> None:
+    rows = [
+        (11, "octocat/alpha", False),
+        (22, "octocat/beta", True),
+        (33, "octocat/gamma", False),
+    ]
+    markup = repos_keyboard(Strings("en"), rows, page=0, pages=2)
+    keyboard = markup.inline_keyboard
+
+    assert len(keyboard) == 5  # 3 repo rows + nav row + back row
+    assert keyboard[0][0].text == "octocat/alpha"
+    assert keyboard[1][0].text == "✅ octocat/beta"
+    assert keyboard[0][0].callback_data == "repo:toggle:0:11"
+    assert keyboard[1][0].callback_data == "repo:toggle:0:22"
+
+    nav = [btn.callback_data for btn in keyboard[3]]
+    assert nav == ["repo:page:0:0", "repo:page:0:0", "repo:page:1:0"]
+    assert [btn.text for btn in keyboard[3]] == ["◀", "1/2", "▶"]
+    assert keyboard[4][0].callback_data == "menu:settings"
+
+
+def test_repos_keyboard_clamps_nav_on_last_page() -> None:
+    rows = [(11, "octocat/alpha", False)]
+    markup = repos_keyboard(Strings("en"), rows, page=1, pages=2)
+    nav = [btn.callback_data for btn in markup.inline_keyboard[1]]
+    assert nav == ["repo:page:0:0", "repo:page:1:0", "repo:page:1:0"]
+
+
+def test_repos_per_page_is_five() -> None:
+    assert REPOS_PER_PAGE == 5
 
 
 def test_texts_without_link() -> None:

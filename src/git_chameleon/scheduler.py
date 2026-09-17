@@ -23,14 +23,20 @@ def _fmt_pr(
 
 
 async def digest_text(
-    github_app: GitHubApp, link: UserLink, strings: Strings | None = None
+    github_app: GitHubApp,
+    link: UserLink,
+    strings: Strings | None = None,
+    selected_ids: set[int] | None = None,
 ) -> str | None:
     """Return a text digest of open pull requests, or None if nothing to report."""
     if not link.installation_id:
         return None
+    if not selected_ids:
+        return None
     strings = strings or Strings(link.locale)
     token = await github_app.installation_token(link.installation_id)
-    repos = await github_app.list_repositories(token)
+    repos = [repo for repo in await github_app.list_repositories(token)
+             if repo["id"] in selected_ids]
 
     lines: list[str] = []
     for repo in repos:
@@ -92,7 +98,8 @@ class Scheduler:
 
     async def check_prs(self) -> None:
         for link in self._storage.all_links():
-            digest = await digest_text(self._github_app, link, Strings(link.locale))
+            selected = self._storage.selected_repo_ids(link.user_id)
+            digest = await digest_text(self._github_app, link, Strings(link.locale), selected)
             if digest == self._last_digest.get(link.user_id):
                 continue
             self._last_digest[link.user_id] = digest

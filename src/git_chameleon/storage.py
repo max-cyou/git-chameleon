@@ -38,6 +38,15 @@ class Storage:
         columns = {row[1] for row in self._conn.execute("PRAGMA table_info(user_links)")}
         if "locale" not in columns:
             self._conn.execute("ALTER TABLE user_links ADD COLUMN locale TEXT")
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS repo_selections (
+                user_id INTEGER NOT NULL,
+                repo_id INTEGER NOT NULL,
+                PRIMARY KEY (user_id, repo_id)
+            )
+            """
+        )
         self._conn.commit()
 
     def _row_to_link(self, row: tuple) -> UserLink:
@@ -96,7 +105,34 @@ class Storage:
             "UPDATE user_links SET github_login = NULL, installation_id = NULL WHERE user_id = ?",
             (user_id,),
         )
+        self._conn.execute("DELETE FROM repo_selections WHERE user_id = ?", (user_id,))
         self._conn.commit()
+
+    def selected_repo_ids(self, user_id: int) -> set[int]:
+        rows = self._conn.execute(
+            "SELECT repo_id FROM repo_selections WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+        return {row[0] for row in rows}
+
+    def toggle_repo(self, user_id: int, repo_id: int) -> bool:
+        """Toggle a repo selection. Returns True if the repo is now selected."""
+        existing = self._conn.execute(
+            "SELECT 1 FROM repo_selections WHERE user_id = ? AND repo_id = ?",
+            (user_id, repo_id),
+        ).fetchone()
+        if existing:
+            self._conn.execute(
+                "DELETE FROM repo_selections WHERE user_id = ? AND repo_id = ?",
+                (user_id, repo_id),
+            )
+        else:
+            self._conn.execute(
+                "INSERT INTO repo_selections (user_id, repo_id) VALUES (?, ?)",
+                (user_id, repo_id),
+            )
+        self._conn.commit()
+        return existing is None
 
     def all_links(self) -> list[UserLink]:
         rows = self._conn.execute(f"SELECT {_COLUMNS} FROM user_links").fetchall()

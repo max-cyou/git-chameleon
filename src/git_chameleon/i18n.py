@@ -30,26 +30,47 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "menu.title": "git-chameleon control panel",
         "menu.not_linked": (
-            "Not linked. Press Install App or send /link <github-username>."
+            "Not linked. Press Linking or send /link <github-username>."
         ),
         "menu.no_installation": (
-            "GitHub: @{login} (no installation yet, press Sync now)."
+            "GitHub: @{login} (no installation yet, press Linking)."
         ),
         "menu.linked": "GitHub: @{login}\nInstallation: #{installation_id}",
         "status.not_linked": (
-            "Not linked. Press Install App or send /link <github-username>."
+            "Not linked. Press Linking or send /link <github-username>."
         ),
         "status.no_installation": (
-            "GitHub: @{login}\nNo installation matched yet. Press Sync now."
+            "GitHub: @{login}\nNo installation matched yet. Press Linking."
         ),
         "status.linked": "GitHub: @{login}\nInstallation: #{installation_id}",
-        "btn.status": "Status",
-        "btn.sync": "Sync now",
-        "btn.install": "Install App",
+        "btn.link": "Linking",
+        "btn.settings": "Settings",
+        "btn.repos": "Repositories",
         "btn.unlink": "Unlink",
         "btn.unlink_confirm": "Yes, unlink",
         "btn.cancel": "Cancel",
         "btn.back": "Back to menu",
+        "btn.back_settings": "Back to settings",
+        "settings.text": (
+            "Settings\n\n"
+            "Pick the repositories to receive news about, or unlink your account."
+        ),
+        "repos.title": "Repositories",
+        "repos.count": "Total: {total}",
+        "repos.selected": "Selected: {selected}",
+        "repos.page_info": "Page {page} of {pages}",
+        "repos.page_label": "{page}/{pages}",
+        "repos.hint": (
+            "Tick the repositories you want news for.\n"
+            "Until you select at least one, no news is sent."
+        ),
+        "repos.none": (
+            "No repositories available yet.\n"
+            "Install the app on some repositories and come back."
+        ),
+        "repos.not_linked": "Link your account first — press Linking.",
+        "repos.prev": "\u25c0",
+        "repos.next": "\u25b6",
         "install.text": (
             "Open this link and press the Install button:\n\n{url}\n\n"
             "Afterwards send /link <your-github-username>"
@@ -59,10 +80,19 @@ STRINGS: dict[str, dict[str, str]] = {
             "No installation for @{login} yet. Open /install to add it, then /sync."
         ),
         "link.linked": "Linked @{login} (installation #{installation_id}).",
+        "link.notify_repos": (
+            "One step left: pick repositories for your news in "
+            "Settings \u2192 Repositories."
+        ),
         "sync.not_linked": "Run /link <your-github-username> first.",
         "sync.no_installation": "No installation for @{login} yet. Open /install to add it.",
         "sync.linked_digest": "Linked to installation #{installation_id}.\n\n{digest}",
         "sync.linked_no_prs": "Linked to installation #{installation_id}. No open PRs.",
+        "sync.no_repos": (
+            "Linked to installation #{installation_id}.\n\n"
+            "No repositories selected yet \u2014 pick them in "
+            "Settings \u2192 Repositories to receive news."
+        ),
         "unlink.done": "Unlinked.",
         "unlink.confirm": "Unlink GitHub account @{login}?",
         "unlink.nothing": "Nothing to unlink.",
@@ -88,28 +118,47 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "menu.title": "Панель управления git-chameleon",
         "menu.not_linked": (
-            "Аккаунт не привязан. Нажми «Установить приложение» или отправь "
-            "/link <имя-пользователя>."
+            "Аккаунт не привязан. Нажми «Привязка» или отправь /link <имя-пользователя>."
         ),
         "menu.no_installation": (
-            "GitHub: @{login} (установка ещё не найдена, нажми «Синхронизировать»)."
+            "GitHub: @{login} (установка ещё не найдена, нажми «Привязка»)."
         ),
         "menu.linked": "GitHub: @{login}\nУстановка: #{installation_id}",
         "status.not_linked": (
-            "Аккаунт не привязан. Нажми «Установить приложение» или отправь "
-            "/link <имя-пользователя>."
+            "Аккаунт не привязан. Нажми «Привязка» или отправь /link <имя-пользователя>."
         ),
         "status.no_installation": (
-            "GitHub: @{login}\nУстановка ещё не найдена. Нажми «Синхронизировать»."
+            "GitHub: @{login}\nУстановка ещё не найдена. Нажми «Привязка»."
         ),
         "status.linked": "GitHub: @{login}\nУстановка: #{installation_id}",
-        "btn.status": "Статус",
-        "btn.sync": "Синхронизировать",
-        "btn.install": "Установить приложение",
+        "btn.link": "Привязка",
+        "btn.settings": "Настройки",
+        "btn.repos": "Репозитории",
         "btn.unlink": "Отвязать",
         "btn.unlink_confirm": "Да, отвязать",
         "btn.cancel": "Отмена",
         "btn.back": "В меню",
+        "btn.back_settings": "К настройкам",
+        "settings.text": (
+            "Настройки\n\n"
+            "Выбери репозитории, по которым присылать новости, или отвяжи аккаунт."
+        ),
+        "repos.title": "Репозитории",
+        "repos.count": "Всего: {total}",
+        "repos.selected": "Выбрано: {selected}",
+        "repos.page_info": "Страница {page} из {pages}",
+        "repos.page_label": "{page}/{pages}",
+        "repos.hint": (
+            "Отметь галочкой репозитории, по которым присылать новости.\n"
+            "Пока не выбран ни один — новости приходить не будут."
+        ),
+        "repos.none": (
+            "Доступных репозиториев пока нет.\n"
+            "Установи приложение на нужные репозитории и вернись."
+        ),
+        "repos.not_linked": "Сначала привяжи аккаунт — кнопка «Привязка».",
+        "repos.prev": "\u25c0",
+        "repos.next": "\u25b6",
         "install.text": (
             "Открой ссылку и нажми кнопку Install:\n\n{url}\n\n"
             "Затем отправь /link <имя-пользователя-github>"
@@ -119,10 +168,19 @@ STRINGS: dict[str, dict[str, str]] = {
             "Установка для @{login} ещё не найдена. Открой /install, затем /sync."
         ),
         "link.linked": "Привязано: @{login} (установка #{installation_id}).",
+        "link.notify_repos": (
+            "Остался последний шаг: выбери репозитории для новостей в "
+            "«Настройки \u2192 Репозитории»."
+        ),
         "sync.not_linked": "Сначала отправь /link <имя-пользователя-github>.",
         "sync.no_installation": "Установка для @{login} ещё не найдена. Открой /install.",
         "sync.linked_digest": "Привязано к установке #{installation_id}.\n\n{digest}",
         "sync.linked_no_prs": "Привязано к установке #{installation_id}. Открытых PR нет.",
+        "sync.no_repos": (
+            "Привязано к установке #{installation_id}.\n\n"
+            "Репозитории не выбраны — выбери их в «Настройки \u2192 Репозитории», "
+            "чтобы получать новости."
+        ),
         "unlink.done": "Отвязано.",
         "unlink.confirm": "Отвязать аккаунт GitHub @{login}?",
         "unlink.nothing": "Нечего отвязывать.",
