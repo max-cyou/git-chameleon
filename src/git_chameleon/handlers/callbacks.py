@@ -1,17 +1,20 @@
 from __future__ import annotations
 
-from aiogram import F, Router, types
+from aiogram import Bot, F, Router, types
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import InlineKeyboardMarkup
 
 from git_chameleon.handlers.github import install_text, sync_user
 from git_chameleon.handlers.keyboards import (
     REPOS_PER_PAGE,
+    GroupCB,
     MenuCB,
     RepoCB,
+    add_group_url,
     back_to_menu,
     back_to_settings,
     confirm_unlink,
+    groups_keyboard,
     llm_menu,
     llm_screen_text,
     main_menu,
@@ -79,10 +82,14 @@ async def _repos_view(
 
 
 @router.callback_query(MenuCB.filter(F.action == "menu"))
-async def cb_menu(cb: types.CallbackQuery, storage: Storage, strings: Strings) -> None:
+async def cb_menu(
+    cb: types.CallbackQuery, storage: Storage, strings: Strings, bot: Bot
+) -> None:
     await cb.answer()
     link = storage.get_link(cb.from_user.id)
-    await _show(cb, menu_text(strings, link), main_menu(strings))
+    await _show(
+        cb, menu_text(strings, link), main_menu(strings, await add_group_url(bot))
+    )
 
 
 @router.callback_query(MenuCB.filter(F.action == "link"))
@@ -110,6 +117,61 @@ async def cb_link(
 async def cb_settings(cb: types.CallbackQuery, strings: Strings) -> None:
     await cb.answer()
     await _show(cb, strings.get("settings.text"), settings_menu(strings))
+
+
+def _groups_view(
+    storage: Storage, user_id: int, strings: Strings, page: int
+) -> tuple[str, InlineKeyboardMarkup]:
+    groups = storage.groups_for_user(user_id)
+    if not groups:
+        return strings.get("groups.none"), back_to_settings(strings)
+
+    pages = -(-len(groups) // REPOS_PER_PAGE)
+    page = max(0, min(page, pages - 1))
+    chunk = groups[page * REPOS_PER_PAGE : (page + 1) * REPOS_PER_PAGE]
+    rows = [(g.chat_id, g.title or str(g.chat_id), g.mention_prs) for g in chunk]
+    on_count = sum(1 for g in groups if g.mention_prs)
+    text = "\n".join(
+        (
+            strings.get("groups.title"),
+            strings.get("groups.count", total=len(groups)),
+            strings.get("groups.on", on=on_count),
+            "",
+            strings.get("groups.hint"),
+        )
+    )
+    return text, groups_keyboard(strings, rows, page, pages)
+
+
+@router.callback_query(MenuCB.filter(F.action == "groups"))
+async def cb_groups(cb: types.CallbackQuery, storage: Storage, strings: Strings) -> None:
+    await cb.answer()
+    text, keyboard = _groups_view(storage, cb.from_user.id, strings, page=0)
+    await _show(cb, text, keyboard)
+
+
+@router.callback_query(GroupCB.filter(F.action == "page"))
+async def cb_group_page(
+    cb: types.CallbackQuery, callback_data: GroupCB, storage: Storage, strings: Strings
+) -> None:
+    await cb.answer()
+    text, keyboard = _groups_view(
+        storage, cb.from_user.id, strings, page=callback_data.page
+    )
+    await _show(cb, text, keyboard)
+
+
+@router.callback_query(GroupCB.filter(F.action == "toggle"))
+async def cb_group_toggle(
+    cb: types.CallbackQuery, callback_data: GroupCB, storage: Storage, strings: Strings
+) -> None:
+    await cb.answer()
+    if callback_data.chat_id:
+        storage.toggle_group_mentions(callback_data.chat_id)
+    text, keyboard = _groups_view(
+        storage, cb.from_user.id, strings, page=callback_data.page
+    )
+    await _show(cb, text, keyboard)
 
 
 @router.callback_query(MenuCB.filter(F.action == "llm"))

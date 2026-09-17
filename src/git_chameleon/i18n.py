@@ -46,12 +46,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn.link": "Linking",
         "btn.settings": "Settings",
         "btn.repos": "Repositories",
+        "btn.groups": "Groups",
         "btn.llm": "LLM",
         "btn.unlink": "Unlink",
         "btn.unlink_confirm": "Yes, unlink",
         "btn.cancel": "Cancel",
         "btn.back": "Back to menu",
         "btn.back_settings": "Back to settings",
+        "btn.add_group": "Add to group",
         "settings.text": (
             "<b>Settings</b>\n\n"
             "Pick the repositories to receive news about, or unlink your account."
@@ -122,6 +124,19 @@ STRINGS: dict[str, dict[str, str]] = {
         "unlink.nothing": "Nothing to unlink.",
         "digest.title": "<b>Open PRs!</b>",
         "digest.mention": "{mention}, you have open PRs:",
+        "groups.title": "<b>Groups</b>",
+        "groups.hint": (
+            "✅ \u2014 mention open PRs in this group.\n"
+            "Groups where both of us are members show up here."
+        ),
+        "groups.none": (
+            "No shared groups yet. Add me to a group via the button in the "
+            "main menu and write something there."
+        ),
+        "groups.count": "Total: {total}",
+        "groups.on": "Enabled in: {on}",
+        "groups.page_label": "{page}/{pages}",
+        "digest.total": "You have {total} open PRs.",
         "digest.no_llm": "LLM is not configured \u2014 no summaries will be generated.",
         "digest.draft": "[draft]",
     },
@@ -160,12 +175,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn.link": "Привязка",
         "btn.settings": "Настройки",
         "btn.repos": "Репозитории",
+        "btn.groups": "Группы",
         "btn.llm": "LLM",
         "btn.unlink": "Отвязать",
         "btn.unlink_confirm": "Да, отвязать",
         "btn.cancel": "Отмена",
         "btn.back": "В меню",
         "btn.back_settings": "К настройкам",
+        "btn.add_group": "Добавить в группу",
         "settings.text": (
             "<b>Настройки</b>\n\n"
             "Выбери репозитории, по которым присылать новости, или отвяжи аккаунт."
@@ -237,6 +254,19 @@ STRINGS: dict[str, dict[str, str]] = {
         "digest.title": "<b>Открытые PR!</b>",
         "digest.mention": "{mention}, у тебя есть открытые PR:",
         "digest.no_llm": "LLM не настроен — саммари не будет.",
+        "digest.total": "Всего открытых PR: {total}.",
+        "groups.title": "<b>Группы</b>",
+        "groups.hint": (
+            "✅ — упоминать про PR в этой группе.\n"
+            "Здесь появляются группы, где есть и ты, и я."
+        ),
+        "groups.none": (
+            "Общих групп пока нет. Добавь меня в группу кнопкой из главного "
+            "меню и напиши там что-нибудь."
+        ),
+        "groups.count": "Всего: {total}",
+        "groups.on": "Включено в: {on}",
+        "groups.page_label": "{page}/{pages}",
         "digest.draft": "[черновик]",
     },
 }

@@ -6,6 +6,13 @@ from pathlib import Path
 
 
 @dataclass(frozen=True)
+class Group:
+    chat_id: int
+    title: str
+    mention_prs: bool = True
+
+
+@dataclass(frozen=True)
 class UserLink:
     user_id: int
     chat_id: int
@@ -49,6 +56,33 @@ class Storage:
                 user_id INTEGER NOT NULL,
                 repo_id INTEGER NOT NULL,
                 PRIMARY KEY (user_id, repo_id)
+            )
+            """
+        )
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS group_chats (
+                chat_id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL DEFAULT '',
+                mention_prs INTEGER NOT NULL DEFAULT 1
+            )
+            """
+        )
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS group_members (
+                chat_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                PRIMARY KEY (chat_id, user_id)
+            )
+            """
+        )
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sent_prs (
+                chat_id INTEGER NOT NULL,
+                pr_key TEXT NOT NULL,
+                PRIMARY KEY (chat_id, pr_key)
             )
             """
         )
@@ -176,3 +210,75 @@ class Storage:
 
     def close(self) -> None:
         self._conn.close()
+
+    def upsert_group(self, chat_id: int, title: str, user_id: int) -> None:
+        """Remember a group the bot is in and that the user is its member."""
+        self._conn.execute(
+            """
+            INSERT INTO group_chats (chat_id, title, mention_prs) VALUES (?, ?, 1)
+            ON CONFLICT(chat_id) DO UPDATE SET title = excluded.title
+            """,
+            (chat_id, title),
+        )
+        self._conn.execute(
+            "INSERT OR IGNORE INTO group_members (chat_id, user_id) VALUES (?, ?)",
+            (chat_id, user_id),
+        )
+        self._conn.commit()
+
+    def groups_for_user(self, user_id: int) -> list[Group]:
+        rows = self._conn.execute(
+            """
+            SELECT g.chat_id, g.title, g.mention_prs
+            FROM group_chats g
+            JOIN group_members m ON m.chat_id = g.chat_id
+            WHERE m.user_id = ?
+            ORDER BY lower(g.title)
+            """,
+            (user_id,),
+        ).fetchall()
+        return [
+            Group(chat_id=row[0], title=row[1], mention_prs=bool(row[2]))
+            for row in rows
+        ]
+
+    def toggle_group_mentions(self, chat_id: int) -> bool:
+        """Flip the PR-mention flag of a group. Returns the new value."""
+        self._conn.execute(
+            "UPDATE group_chats SET mention_prs = 1 - mention_prs WHERE chat_id = ?",
+            (chat_id,),
+        )
+        self._conn.commit()
+        row = self._conn.execute(
+            "SELECT mention_prs FROM group_chats WHERE chat_id = ?",
+            (chat_id,),
+        ).fetchone()
+        return bool(row[0]) if row else False
+
+    def digest_group_ids(self, user_id: int) -> list[int]:
+        """Groups shared with the user where PR mentions are enabled."""
+        rows = self._conn.execute(
+            """
+            SELECT g.chat_id FROM group_chats g
+            JOIN group_members m ON m.chat_id = g.chat_id
+            WHERE m.user_id = ? AND g.mention_prs = 1
+            """,
+            (user_id,),
+        ).fetchall()
+        return [row[0] for row in rows]
+
+    def known_pr_keys(self, chat_id: int) -> set[str]:
+        rows = self._conn.execute(
+            "SELECT pr_key FROM sent_prs WHERE chat_id = ?",
+            (chat_id,),
+        ).fetchall()
+        return {row[0] for row in rows}
+
+    def add_pr_keys(self, chat_id: int, pr_keys: set[str]) -> None:
+        if not pr_keys:
+            return
+        self._conn.executemany(
+            "INSERT OR IGNORE INTO sent_prs (chat_id, pr_key) VALUES (?, ?)",
+            [(chat_id, key) for key in pr_keys],
+        )
+        self._conn.commit()

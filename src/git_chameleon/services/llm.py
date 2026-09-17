@@ -37,14 +37,18 @@ CHAT_SYSTEM_PROMPTS = {
 
 SUMMARY_SYSTEM_PROMPTS = {
     "en": (
-        "You write short pull request reviews for a Telegram digest. In one "
-        "or two sentences describe what the PR changes and why it matters. "
+        "You write detailed pull request reviews for a Telegram digest. "
+        "In 4-6 sentences (or a compact bullet list, one item per line "
+        "prefixed with '- ') describe: what the PR changes, why it matters, "
+        "and what to pay attention to when reviewing. "
         "Plain text only: no Markdown, no HTML. Answer in English."
     ),
     "ru": (
-        "Ты пишешь краткие ревью pull request'ов для дайджеста в Telegram. "
-        "В одном-двух предложениях опиши, что меняет PR и почему это важно. "
-        "Только простой текст: без Markdown и HTML. Ответь по-русски."
+        "Ты пишешь подробные ревью pull request'ов для дайджеста в Telegram. "
+        "В 4-6 предложениях (или компактным списком, по пункту на строку "
+        "с '- ') опиши: что меняет PR, зачем это нужно и на что обратить "
+        "внимание при ревью. Только простой текст: без Markdown и HTML. "
+        "Ответь по-русски."
     ),
 }
 
@@ -58,7 +62,7 @@ MAX_CONTEXT_PRS = 15
 MAX_USER_CHARS = 4000
 CHAT_MAX_TOKENS = 600
 CHAT_TEMPERATURE = 0.4
-SUMMARY_MAX_TOKENS = 150
+SUMMARY_MAX_TOKENS = 400
 SUMMARY_TEMPERATURE = 0.2
 
 _summary_cache: dict[tuple[str, str, int], str] = {}

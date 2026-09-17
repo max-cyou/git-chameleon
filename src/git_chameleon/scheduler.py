@@ -30,8 +30,8 @@ async def digest_text(
     strings: Strings | None = None,
     selected_ids: set[int] | None = None,
     llm: LLMClient | None = None,
-) -> str | None:
-    """Return a text digest of open pull requests, or None if nothing to report."""
+) -> tuple[str, set[str]] | None:
+    """Return the digest text with its PR keys, or None if nothing to report."""
     if not link.installation_id:
         return None
     if not selected_ids:
@@ -43,6 +43,7 @@ async def digest_text(
 
     review_on = llm is not None and link.llm_review
     blocks: list[str] = []
+    pr_keys: set[str] = set()
     for repo in repos:
         owner = repo["owner"]["login"]
         name = repo["name"]
@@ -52,6 +53,7 @@ async def digest_text(
             logger.exception("Failed to fetch pull requests for %s/%s", owner, name)
             continue
         for pr in pulls:
+            pr_keys.add(f"{owner}/{name}#{pr.number}")
             line = _fmt_pr(
                 owner, name, pr.number, pr.title, pr.is_draft, strings.get("digest.draft")
             )
@@ -74,8 +76,9 @@ async def digest_text(
         strings.get("digest.mention", mention=mention),
         "\n".join(blocks),
         footer,
+        strings.get("digest.total", total=len(blocks)),
     )
-    return "\n\n".join(part for part in parts if part)
+    return "\n\n".join(part for part in parts if part), pr_keys
 
 
 class Scheduler:
@@ -92,7 +95,6 @@ class Scheduler:
         self._storage = storage
         self._github_app = github_app
         self._llm = llm
-        self._last_digest: dict[int, str | None] = {}
 
     async def sync_installations(self) -> None:
         try:
@@ -123,11 +125,20 @@ class Scheduler:
             digest = await digest_text(
                 self._github_app, link, Strings(link.locale), selected, self._llm
             )
-            if digest == self._last_digest.get(link.user_id):
+            if digest is None:
                 continue
-            self._last_digest[link.user_id] = digest
-            if digest is not None:
-                await self._bot.send_message(link.chat_id, digest)
+            text, pr_keys = digest
+            destinations = [link.chat_id] + self._storage.digest_group_ids(link.user_id)
+            for chat_id in destinations:
+                fresh = pr_keys - self._storage.known_pr_keys(chat_id)
+                if not fresh:
+                    continue
+                try:
+                    await self._bot.send_message(chat_id, text)
+                except Exception:
+                    logger.exception("Failed to send digest to chat %s", chat_id)
+                    continue
+                self._storage.add_pr_keys(chat_id, fresh)
 
     async def run(self) -> None:
         logger.info("Scheduler started")

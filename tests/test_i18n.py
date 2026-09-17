@@ -216,3 +216,34 @@ def test_storage_migration_adds_llm_columns(tmp_path) -> None:
     assert link.llm_chat is False
     assert link.llm_review is False
     storage.close()
+
+
+def test_group_tracking_and_toggles(tmp_path) -> None:
+    storage = Storage(str(tmp_path / "test.db"))
+    storage.upsert_group(-100, "Dev Team", 1)
+    storage.upsert_group(-100, "Dev Team Renamed", 2)
+    storage.upsert_group(-200, "Work Chat", 1)
+
+    groups = storage.groups_for_user(1)
+    assert [g.title for g in groups] == ["Dev Team Renamed", "Work Chat"]
+    assert all(g.mention_prs for g in groups)
+    assert len(storage.groups_for_user(2)) == 1
+
+    assert storage.toggle_group_mentions(-100) is False
+    assert storage.digest_group_ids(1) == [-200]
+    assert storage.toggle_group_mentions(-100) is True
+    assert sorted(storage.digest_group_ids(1)) == [-200, -100]
+    storage.close()
+
+
+def test_sent_pr_keys_roundtrip(tmp_path) -> None:
+    storage = Storage(str(tmp_path / "test.db"))
+    assert storage.known_pr_keys(1) == set()
+
+    storage.add_pr_keys(1, {"o/r#1", "o/r#2"})
+    assert storage.known_pr_keys(1) == {"o/r#1", "o/r#2"}
+    assert storage.known_pr_keys(2) == set()
+
+    storage.add_pr_keys(1, {"o/r#1"})  # idempotent
+    assert len(storage.known_pr_keys(1)) == 2
+    storage.close()

@@ -5,6 +5,7 @@ from git_chameleon.handlers.keyboards import (
     back_to_menu,
     back_to_settings,
     confirm_unlink,
+    groups_keyboard,
     llm_menu,
     llm_screen_text,
     main_menu,
@@ -37,19 +38,51 @@ def test_main_menu_localized_labels() -> None:
 
 def test_settings_menu_actions() -> None:
     markup = settings_menu(Strings("en"))
-    assert all_texts(markup) == ["Repositories", "LLM", "Unlink", "Back to menu"]
+    assert all_texts(markup) == [
+        "Repositories",
+        "Groups",
+        "LLM",
+        "Unlink",
+        "Back to menu",
+    ]
     assert all_callback_data(markup) == [
         "menu:repos",
+        "menu:groups",
         "menu:llm",
         "menu:unlink",
         "menu:menu",
     ]
     assert all_texts(settings_menu(Strings("ru"))) == [
         "Репозитории",
+        "Группы",
         "LLM",
         "Отвязать",
         "В меню",
     ]
+
+
+def test_main_menu_add_group_button() -> None:
+    markup = main_menu(Strings("en"), add_group_url="https://t.me/bot?startgroup=add")
+    texts = all_texts(markup)
+    urls = [btn.url for row in markup.inline_keyboard for btn in row]
+    assert texts == ["Linking", "Settings", "Add to group"]
+    assert "https://t.me/bot?startgroup=add" in urls
+
+
+def test_groups_keyboard_layout() -> None:
+    rows = [(-100, "Dev Team", True), (-200, "Work Chat", False)]
+    markup = groups_keyboard(Strings("en"), rows, page=0, pages=1)
+    keyboard = markup.inline_keyboard
+
+    assert keyboard[0][0].text == "✅ Dev Team"
+    assert keyboard[1][0].text == "Work Chat"
+    assert keyboard[0][0].callback_data == "grp:toggle:0:-100"
+    assert keyboard[1][0].callback_data == "grp:toggle:0:-200"
+
+    nav = [btn.callback_data for btn in keyboard[2]]
+    assert nav == ["grp:page:0:0", "grp:page:0:0", "grp:page:0:0"]
+    back_row = [btn.callback_data for btn in keyboard[3]]
+    assert back_row == ["menu:settings", "menu:menu"]
 
 
 def test_confirm_unlink_actions() -> None:

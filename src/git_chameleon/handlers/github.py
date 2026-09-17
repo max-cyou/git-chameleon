@@ -6,7 +6,12 @@ import re
 from aiogram import F, Router, types
 from aiogram.filters import Command
 
-from git_chameleon.handlers.keyboards import main_menu, menu_text, status_text
+from git_chameleon.handlers.keyboards import (
+    add_group_url,
+    main_menu,
+    menu_text,
+    status_text,
+)
 from git_chameleon.i18n import Strings
 from git_chameleon.scheduler import digest_text
 from git_chameleon.services.github_app import GitHubApp, Installation
@@ -98,7 +103,7 @@ async def sync_user(
     )
     if digest:
         return strings.get(
-            "sync.linked_digest", installation_id=installation.id, digest=digest
+            "sync.linked_digest", installation_id=installation.id, digest=digest[0]
         )
     return strings.get("sync.linked_no_prs", installation_id=installation.id)
 
@@ -165,7 +170,66 @@ async def on_menu(message: types.Message, storage: Storage, strings: Strings) ->
     user_id = _user_id(message)
     storage.ensure_user(user_id, message.chat.id)
     link = storage.get_link(user_id)
-    await message.answer(menu_text(strings, link), reply_markup=main_menu(strings))
+    await message.answer(
+        menu_text(strings, link),
+        reply_markup=main_menu(strings, await add_group_url(message.bot)),
+    )
+
+
+async def _mentions_bot(message: types.Message) -> bool:
+    bot = message.bot
+    if bot is None:
+        return False
+    me = await bot.me()
+    username = me.username or ""
+    return bool(username) and f"@{username}".lower() in (message.text or "").lower()
+
+
+@router.message(F.chat.type.in_({"group", "supergroup"}), F.text, _mentions_bot)
+async def on_group_mention(
+    message: types.Message,
+    storage: Storage,
+    github_app: GitHubApp,
+    strings: Strings,
+    llm: LLMClient | None,
+) -> None:
+    """In groups the bot answers via LLM when mentioned."""
+    user = message.from_user
+    if user is None or user.is_bot:
+        return
+    storage.upsert_group(message.chat.id, message.chat.title or "", user.id)
+    if llm is None:
+        await message.reply(strings.get("llm.not_configured"))
+        return
+
+    link = storage.get_link(user.id)
+    system = chat_system_prompt(strings.locale)
+    if link is not None:
+        context = await build_pr_context(github_app, storage, link, llm)
+        if context:
+            system += "\n\n" + context
+
+    try:
+        answer = await llm.complete(
+            system,
+            (message.text or "")[:MAX_USER_CHARS],
+            max_tokens=CHAT_MAX_TOKENS,
+            temperature=CHAT_TEMPERATURE,
+        )
+    except Exception:
+        logger.exception("LLM group chat failed in chat %s", message.chat.id)
+        await message.reply(strings.get("llm.chat_error"))
+        return
+    await message.reply(markdown_to_html(answer))
+
+
+@router.message(F.chat.type.in_({"group", "supergroup"}))
+async def on_group_message(message: types.Message, storage: Storage) -> None:
+    """Track shared groups and their members (privacy mode must be off)."""
+    user = message.from_user
+    if user is None or user.is_bot:
+        return
+    storage.upsert_group(message.chat.id, message.chat.title or "", user.id)
 
 
 @router.message(F.text)

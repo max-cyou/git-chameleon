@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from aiogram import Bot
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -8,6 +9,18 @@ from git_chameleon.i18n import Strings
 from git_chameleon.storage import UserLink
 
 REPOS_PER_PAGE = 5
+
+ADD_GROUP_URL = "https://t.me/{username}?startgroup=add"
+
+
+async def add_group_url(bot: Bot | None) -> str | None:
+    """Deep link that adds the bot to a group."""
+    if bot is None:
+        return None
+    me = await bot.me()
+    if me.username is None:
+        return None
+    return ADD_GROUP_URL.format(username=me.username)
 
 
 class MenuCB(CallbackData, prefix="menu"):
@@ -20,10 +33,20 @@ class RepoCB(CallbackData, prefix="repo"):
     repo_id: int = 0
 
 
-def main_menu(strings: Strings) -> InlineKeyboardMarkup:
+class GroupCB(CallbackData, prefix="grp"):
+    action: str
+    page: int
+    chat_id: int = 0
+
+
+def main_menu(
+    strings: Strings, add_group_url: str | None = None
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=strings.get("btn.link"), callback_data=MenuCB(action="link"))
     builder.button(text=strings.get("btn.settings"), callback_data=MenuCB(action="settings"))
+    if add_group_url:
+        builder.button(text=strings.get("btn.add_group"), url=add_group_url)
     builder.adjust(2)
     return builder.as_markup()
 
@@ -31,6 +54,7 @@ def main_menu(strings: Strings) -> InlineKeyboardMarkup:
 def settings_menu(strings: Strings) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=strings.get("btn.repos"), callback_data=MenuCB(action="repos"))
+    builder.button(text=strings.get("btn.groups"), callback_data=MenuCB(action="groups"))
     builder.button(text=strings.get("btn.llm"), callback_data=MenuCB(action="llm"))
     builder.button(text=strings.get("btn.unlink"), callback_data=MenuCB(action="unlink"))
     builder.button(text=strings.get("btn.back"), callback_data=MenuCB(action="menu"))
@@ -136,6 +160,56 @@ def llm_screen_text(
     if provider_configured:
         return strings.get("llm.text_configured", model=model)
     return strings.get("llm.text_unconfigured")
+
+
+def groups_keyboard(
+    strings: Strings, rows: list[tuple[int, str, bool]], page: int, pages: int
+) -> InlineKeyboardMarkup:
+    """Group picker: one mention-toggle button per group plus pagination."""
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text=("✅ " if on else "") + title,
+                callback_data=GroupCB(
+                    action="toggle", page=page, chat_id=chat_id
+                ).pack(),
+            )
+        ]
+        for chat_id, title, on in rows
+    ]
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                text=strings.get("repos.prev"),
+                callback_data=GroupCB(
+                    action="page", page=max(0, page - 1), chat_id=0
+                ).pack(),
+            ),
+            InlineKeyboardButton(
+                text=strings.get("groups.page_label", page=page + 1, pages=pages),
+                callback_data=GroupCB(action="page", page=page, chat_id=0).pack(),
+            ),
+            InlineKeyboardButton(
+                text=strings.get("repos.next"),
+                callback_data=GroupCB(
+                    action="page", page=min(pages - 1, page + 1), chat_id=0
+                ).pack(),
+            ),
+        ]
+    )
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                text=strings.get("btn.back_settings"),
+                callback_data=MenuCB(action="settings").pack(),
+            ),
+            InlineKeyboardButton(
+                text=strings.get("btn.back"),
+                callback_data=MenuCB(action="menu").pack(),
+            ),
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def menu_text(strings: Strings, link: UserLink | None) -> str:
