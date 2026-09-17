@@ -60,9 +60,9 @@ CONTEXT_HEADER = {
 CONTEXT_TTL_SECONDS = 300
 MAX_CONTEXT_PRS = 15
 MAX_USER_CHARS = 4000
-CHAT_MAX_TOKENS = 600
+CHAT_MAX_TOKENS = 1500
 CHAT_TEMPERATURE = 0.4
-SUMMARY_MAX_TOKENS = 400
+SUMMARY_MAX_TOKENS = 2000
 SUMMARY_TEMPERATURE = 0.2
 
 _summary_cache: dict[tuple[str, str, int], str] = {}
@@ -144,6 +144,14 @@ async def pr_summary(
         )
     except Exception:
         logger.exception("LLM summary failed for %s/%s#%s", owner, repo, number)
+        return None
+    if not summary:
+        logger.warning(
+            "LLM summary for %s/%s#%s came back empty (reasoning tokens?)",
+            owner,
+            repo,
+            number,
+        )
         return None
     _summary_cache[key] = summary
     return summary

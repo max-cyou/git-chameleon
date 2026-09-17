@@ -134,7 +134,9 @@ class Scheduler:
                 if not fresh:
                     continue
                 try:
-                    await self._bot.send_message(chat_id, text)
+                    await asyncio.wait_for(
+                        self._bot.send_message(chat_id, text), timeout=60
+                    )
                 except Exception:
                     logger.exception("Failed to send digest to chat %s", chat_id)
                     continue
@@ -143,6 +145,9 @@ class Scheduler:
     async def run(self) -> None:
         logger.info("Scheduler started")
         while True:
-            await self.sync_installations()
-            await self.check_prs()
+            try:
+                await self.sync_installations()
+                await self.check_prs()
+            except Exception:
+                logger.exception("Scheduler cycle failed")
             await asyncio.sleep(DIGEST_INTERVAL_SECONDS)
